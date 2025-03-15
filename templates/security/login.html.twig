@@ -1,0 +1,58 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Connexion | Viking Cup Admin{% endblock %}
+
+{% block body %}
+    <div class="login-container">
+        <h1 class="title">Connexion</h1>
+
+        {% if error %}
+            <div class="error">Nom d'utilisateur ou mot de passe incorrect</div>
+        {% endif %}
+
+        <form class="login-form" method="post">
+            <div class="form-group">
+                <label for="username">Nom d'utilisateur</label>
+                <input type="text" id="username" name="_username" value="{{ last_username }}" required>
+            </div>
+
+            <div class="form-group">
+                <label for="password" class="form-control-label">Mot de passe</label>
+                <input type="password" id="password" name="_password" class="form-control">
+            </div>
+
+            <button type="submit" class="btn" style="text-transform: uppercase; margin-top: 1rem">Se connecter</button>
+        </form>
+    </div>
+
+    <style>
+        .login-container {
+            max-height: 100vh;
+            max-width: 80rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding-top: 10rem;
+            margin: auto;
+        }
+        .title {
+            margin: 4rem 0;
+        }
+        .login-form {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 2rem;
+            width: 100%;
+        }
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 0.2rem;
+        }
+    </style>
+{% endblock %}
