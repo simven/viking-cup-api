@@ -5,6 +5,7 @@ namespace App\Entity;
 use App\Repository\RoundRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
+use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: RoundRepository::class)]
@@ -32,6 +33,12 @@ class Round
      */
     #[ORM\OneToMany(targetEntity: PilotRoundCategory::class, mappedBy: 'round')]
     private Collection $pilotRoundCategories;
+
+    #[ORM\Column(type: Types::DATE_MUTABLE, nullable: true)]
+    private ?\DateTimeInterface $fromDate = null;
+
+    #[ORM\Column(type: Types::DATE_MUTABLE, nullable: true)]
+    private ?\DateTimeInterface $toDate = null;
 
     public function __construct()
     {
@@ -124,6 +131,30 @@ class Round
                 $pilotRoundCategory->setRound(null);
             }
         }
+
+        return $this;
+    }
+
+    public function getFromDate(): ?\DateTimeInterface
+    {
+        return $this->fromDate;
+    }
+
+    public function setFromDate(?\DateTimeInterface $fromDate): static
+    {
+        $this->fromDate = $fromDate;
+
+        return $this;
+    }
+
+    public function getToDate(): ?\DateTimeInterface
+    {
+        return $this->toDate;
+    }
+
+    public function setToDate(?\DateTimeInterface $toDate): static
+    {
+        $this->toDate = $toDate;
 
         return $this;
     }
