@@ -1,0 +1,102 @@
+{% extends '@!EasyAdmin/layout.html.twig' %}
+
+{% block page_title %}Importer des médias en masse{% endblock %}
+
+{% block content %}
+    <div class="content">
+        <div class="content-header">
+            <h1 class="title">Importer des médias en masse</h1>
+        </div>
+
+        <form id="dropzone-form" action="{{ path('admin_media_import_process') }}" class="dropzone">
+            <div class="dz-message">
+                Déposez vos fichiers ici ou cliquez pour sélectionner
+            </div>
+        </form>
+
+        <div class="btn-container">
+            <button id="upload-button" class="upload-btn">Importer</button>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/dropzone@5/dist/min/dropzone.min.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/dropzone@5/dist/min/dropzone.min.css" type="text/css" />
+
+    <style>
+        .dropzone {
+            min-height: auto;
+            padding: 1.5rem 1.75rem;
+            text-align: center;
+            cursor: pointer;
+            border: 1px dashed #006AE6;
+            background-color: #172331;
+            border-radius: .475rem !important;
+        }
+        .dropzone .dz-preview.dz-image-preview {
+            background: unset;
+        }
+
+        .dz-message {
+            color: white;
+            font-size: 16px;
+        }
+
+        .btn-container {
+            width: 100%;
+            text-align: center;
+        }
+
+        .upload-btn {
+            display: block;
+            background-color: #007bff;
+            color: white;
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            margin: 20px auto;
+            cursor: pointer;
+        }
+
+        .upload-btn:hover {
+            background-color: #0056b3;
+        }
+    </style>
+
+    <script>
+        Dropzone.autoDiscover = false;
+
+        const dropzone = new Dropzone("#dropzone-form", {
+            url: "{{ path('admin_media_import_process') }}",
+            parallelUploads: 100,
+            maxFiles: 100,
+            maxFilesize: 50,
+            acceptedFiles: "image/jpeg,image/png,image/webp,video/mp4",
+            addRemoveLinks: true,
+            dictRemoveFile: "Supprimer",
+            dictCancelUpload: "Annuler l'upload",
+            dictCancelUploadConfirmation: "Êtes-vous sûr de vouloir annuler cet upload ?",
+            autoProcessQueue: false,
+            init: function () {
+                let submitButton = document.querySelector("#upload-button");
+                let myDropzone = this;
+
+                submitButton.addEventListener("click", function () {
+                    if (myDropzone.files.length > 0) {
+                        myDropzone.processQueue();
+                    } else {
+                        alert("Aucun fichier sélectionné !");
+                    }
+                });
+
+                this.on("queuecomplete", function (files, response) {
+                    console.log("Upload réussi :", response);
+                    myDropzone.removeAllFiles(true);
+                });
+
+                this.on("error", function (file, errorMessage) {
+                    console.error("Erreur lors de l'upload :", errorMessage);
+                });
+            }
+        });
+    </script>
+{% endblock %}
