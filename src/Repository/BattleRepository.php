@@ -16,6 +16,16 @@ class BattleRepository extends ServiceEntityRepository
         parent::__construct($registry, Battle::class);
     }
 
+    public function findWinners(int $passage)
+    {
+        return $this->createQueryBuilder('b')
+            ->andWhere('b.passage = :passage')
+            ->andWhere('b.winner IS NOT NULL')
+            ->setParameter('passage', $passage)
+            ->getQuery()
+            ->getResult();
+    }
+
     //    /**
     //     * @return Battle[] Returns an array of Battle objects
     //     */

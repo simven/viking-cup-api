@@ -168,6 +168,7 @@ class BilletwebBusiness
 
     private function createDoubleMountPilotRoundCategory(array $doubleMountingTickets): void
     {
+        $pilotAssociation = [];
         foreach ($doubleMountingTickets as $doubleMountingTicket) {
             $mainPilotName = $doubleMountingTicket['ticket']->getCustom()['Nom du pilote principal'] ?? null;
 
@@ -177,27 +178,49 @@ class BilletwebBusiness
             }
 
             if ($mainPilot->getId() !== $doubleMountingTicket['pilot']->getId()) {
-                $secondPilot = $doubleMountingTicket['pilot'];
-
                 $this->createPilotRoundCategory(
-                    $mainPilot,
+                    $doubleMountingTicket['pilot'],
                     $doubleMountingTicket['round'],
                     $doubleMountingTicket['category'],
                     $doubleMountingTicket['vehicle'],
-                    $secondPilot
+                    false
+                );
+
+                $pilotAssociation[$mainPilot->getId()] = $doubleMountingTicket['pilot'];
+            }
+        }
+
+        foreach ($doubleMountingTickets as $doubleMountingTicket) {
+            $mainPilotName = $doubleMountingTicket['ticket']->getCustom()['Nom du pilote principal'] ?? null;
+
+            $mainPilot = $this->pilotRepository->findByName($mainPilotName);
+            if ($mainPilot === null) {
+                continue;
+            }
+
+            if ($mainPilot->getId() === $doubleMountingTicket['pilot']->getId() && isset($pilotAssociation[$doubleMountingTicket['pilot']->getId()])) {
+                $this->createPilotRoundCategory(
+                    $doubleMountingTicket['pilot'],
+                    $doubleMountingTicket['round'],
+                    $doubleMountingTicket['category'],
+                    $doubleMountingTicket['vehicle'],
+                    true,
+                    $pilotAssociation[$doubleMountingTicket['pilot']->getId()]
                 );
             }
         }
+
     }
 
-    private function createPilotRoundCategory(Pilot $mainPilot, Round $round, Category $category, ?string $vehicle, ?Pilot $secondPilot = null): void
+    private function createPilotRoundCategory(Pilot $pilot, Round $round, Category $category, ?string $vehicle, bool $isMainPilot = true, ?Pilot $secondPilot = null): void
     {
-        $pilotRoundCategory = $this->pilotRoundCategoryRepository->findOneBy(['pilot' => $mainPilot, 'round' => $round, 'category' => $category]);
+        $pilotRoundCategory = $this->pilotRoundCategoryRepository->findOneBy(['pilot' => $pilot, 'round' => $round, 'category' => $category]);
         if ($pilotRoundCategory === null) {
             $pilotRoundCategory = new PilotRoundCategory();
-            $pilotRoundCategory->setPilot($mainPilot)
+            $pilotRoundCategory->setPilot($pilot)
                 ->setRound($round)
                 ->setCategory($category)->setVehicle($vehicle)
+                ->setMainPilot($isMainPilot)
                 ->setSecondPilot($secondPilot);
 
             $this->em->persist($pilotRoundCategory);

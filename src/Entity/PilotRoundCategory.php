@@ -33,9 +33,16 @@ class PilotRoundCategory
     #[Groups(['pilotRoundCategorySecondPilot'])]
     private ?Pilot $secondPilot = null;
 
+    #[ORM\Column]
+    private ?bool $mainPilot = null;
+
     #[ORM\Column(length: 255, nullable: true)]
     #[Groups(['pilotRoundCategory'])]
     private ?string $vehicle = null;
+
+    #[ORM\Column(options: ['default' => true])]
+    #[Groups(['pilotRoundCategory'])]
+    private bool $isCompeting = true;
 
     /**
      * @var Collection<int, Qualifying>
@@ -102,6 +109,18 @@ class PilotRoundCategory
         return $this;
     }
 
+    public function isMainPilot(): ?bool
+    {
+        return $this->mainPilot;
+    }
+
+    public function setMainPilot(bool $mainPilot): static
+    {
+        $this->mainPilot = $mainPilot;
+
+        return $this;
+    }
+
     public function getVehicle(): ?string
     {
         return $this->vehicle;
@@ -110,6 +129,18 @@ class PilotRoundCategory
     public function setVehicle(?string $vehicle): static
     {
         $this->vehicle = $vehicle;
+
+        return $this;
+    }
+
+    public function isCompeting(): bool
+    {
+        return $this->isCompeting;
+    }
+
+    public function setIsCompeting(bool $isCompeting): static
+    {
+        $this->isCompeting = $isCompeting;
 
         return $this;
     }

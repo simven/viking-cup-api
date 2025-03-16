@@ -14,11 +14,9 @@ class Battle
     private ?int $id = null;
 
     #[ORM\ManyToOne(inversedBy: 'battles')]
-    #[ORM\JoinColumn(nullable: false)]
     private ?PilotRoundCategory $pilotRoundCategory1 = null;
 
     #[ORM\ManyToOne(inversedBy: 'battles')]
-    #[ORM\JoinColumn(nullable: false)]
     private ?PilotRoundCategory $pilotRoundCategory2 = null;
 
     #[ORM\ManyToOne]

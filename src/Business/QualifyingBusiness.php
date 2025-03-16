@@ -53,6 +53,8 @@ readonly class QualifyingBusiness
                 continue;
             }
 
+            $pilotRoundCategory->setIsCompeting($roundCategoryPilotQualif->isCompeting);
+
             $qualifs = $this->serializer->denormalize($roundCategoryPilotQualif->qualifs, QualifDto::class . '[]');
             /** @var QualifDto $qualif */
             foreach ($qualifs as $qualif) {
@@ -66,8 +68,8 @@ readonly class QualifyingBusiness
                     } else {
                         if ($qualifying === null) {
                             $qualifying = new Qualifying();
-                            $qualifying->setPilotRoundCategory($pilotRoundCategory);
-                            $qualifying->setPassage($qualif->passage);
+                            $qualifying->setPilotRoundCategory($pilotRoundCategory)
+                                ->setPassage($qualif->passage);
                         }
                         $qualifying->setPoints($qualif->points);
 
@@ -78,5 +80,30 @@ readonly class QualifyingBusiness
         }
 
         $this->em->flush();
+    }
+
+    public function getQualifyingRanking(Round $round, Category $category): array
+    {
+        $pilotRoundCategories = $this->pilotRoundCategoryRepository->findByRoundCategory($round, $category);
+
+        $ranking = [];
+        /** @var PilotRoundCategory $pilotRoundCategory */
+        foreach ($pilotRoundCategories as $pilotRoundCategory) {
+            $maxPilotPoints = $pilotRoundCategory->getQualifyings()->first()->getPoints();
+            foreach ($pilotRoundCategory->getQualifyings() as $qualifying) {
+                if ($qualifying->getPoints() > $maxPilotPoints) {
+                    $maxPilotPoints = $qualifying->getPoints();
+                }
+            }
+
+            $ranking[] = [
+                'pilotRoundCategory' => $pilotRoundCategory,
+                'points' => $maxPilotPoints
+            ];
+        }
+
+        usort($ranking, fn($a, $b) => $b['points'] <=> $a['points']);
+
+        return $ranking;
     }
 }

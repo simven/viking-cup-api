@@ -33,6 +33,23 @@ class QualifyingApiController extends AbstractController
         return $this->json($roundCategoryPilotsQualifying);
     }
 
+    #[Route('/ranking', name: 'ranking', methods: ['GET'])]
+    public function getQualifyingRanking(
+        QualifyingBusiness $qualifyingBusiness,
+        RoundRepository $roundRepository,
+        CategoryRepository $categoryRepository,
+        #[MapQueryParameter] int $round,
+        #[MapQueryParameter] int $category
+    ): Response
+    {
+        $round = $roundRepository->find($round);
+        $category = $categoryRepository->find($category);
+
+        $qualifyingRanking = $qualifyingBusiness->getQualifyingRanking($round, $category);
+
+        return $this->json($qualifyingRanking, 200, [], ['groups' => ['pilotRoundCategory', 'pilotRoundCategoryPilot', 'pilot']]);
+    }
+
     #[Route('', name: 'update', methods: ['PUT'])]
     public function updateRoundCategoryPilotsQualifying(
         QualifyingBusiness $qualifyingBusiness,
