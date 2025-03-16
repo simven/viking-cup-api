@@ -6,11 +6,13 @@ use App\Dto\BilletwebTicketDto;
 use App\Entity\BilletwebTicket;
 use App\Entity\Category;
 use App\Entity\Pilot;
+use App\Entity\PilotEvent;
 use App\Entity\PilotRoundCategory;
 use App\Entity\Round;
 use App\Helper\ConfigHelper;
 use App\Repository\BilletwebTicketRepository;
 use App\Repository\CategoryRepository;
+use App\Repository\PilotEventRepository;
 use App\Repository\PilotRepository;
 use App\Repository\PilotRoundCategoryRepository;
 use App\Repository\RoundRepository;
@@ -31,6 +33,7 @@ class BilletwebBusiness
         private readonly CategoryRepository           $categoryRepository,
         private readonly PilotRepository              $pilotRepository,
         private readonly PilotRoundCategoryRepository $pilotRoundCategoryRepository,
+        private readonly PilotEventRepository         $pilotEventRepository,
         private readonly BilletwebService             $billetwebService,
         private readonly ConfigHelper                 $configHelper,
         private readonly EntityManagerInterface       $em,
@@ -88,6 +91,17 @@ class BilletwebBusiness
                         }
 
                         $this->em->persist($pilot);
+                    }
+
+                    $pilotEvent = $this->pilotEventRepository->findOneBy(['pilot' => $pilot, 'event' => $round->getEvent()]);
+                    if ($pilotEvent === null) {
+                        $pilotEvent = new PilotEvent();
+                        $pilotEvent->setPilot($pilot)
+                            ->setEvent($round->getEvent())
+                            ->setReceiveWindscreenBand(false);
+                        // TODO: Generate pilot number
+
+                        $this->em->persist($pilotEvent);
                     }
 
                     // Create PilotRoundCategory Entity

@@ -6,6 +6,7 @@ use App\Repository\PilotRoundCategoryRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Serializer\Attribute\Groups;
 
 #[ORM\Entity(repositoryClass: PilotRoundCategoryRepository::class)]
 class PilotRoundCategory
@@ -13,27 +14,34 @@ class PilotRoundCategory
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups(['pilotRoundCategory'])]
     private ?int $id = null;
 
     #[ORM\ManyToOne(inversedBy: 'pilotRoundCategories')]
+    #[Groups(['pilotRoundCategoryPilot'])]
     private ?Pilot $pilot = null;
 
     #[ORM\ManyToOne(inversedBy: 'pilotRoundCategories')]
+    #[Groups(['pilotRoundCategoryRound'])]
     private ?Round $round = null;
 
     #[ORM\ManyToOne(inversedBy: 'pilotRoundCategories')]
+    #[Groups(['pilotRoundCategoryCategory'])]
     private ?Category $category = null;
 
     #[ORM\ManyToOne]
+    #[Groups(['pilotRoundCategorySecondPilot'])]
     private ?Pilot $secondPilot = null;
 
     #[ORM\Column(length: 255, nullable: true)]
+    #[Groups(['pilotRoundCategory'])]
     private ?string $vehicle = null;
 
     /**
      * @var Collection<int, Qualifying>
      */
     #[ORM\OneToMany(targetEntity: Qualifying::class, mappedBy: 'pilotRoundCategory')]
+    #[Groups(['pilotRoundCategoryQualifyings'])]
     private Collection $qualifyings;
 
     public function __construct()

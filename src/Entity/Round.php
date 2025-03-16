@@ -7,6 +7,7 @@ use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Serializer\Attribute\Groups;
 
 #[ORM\Entity(repositoryClass: RoundRepository::class)]
 class Round
@@ -14,12 +15,15 @@ class Round
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups(['round'])]
     private ?int $id = null;
 
     #[ORM\Column(length: 255)]
+    #[Groups(['round'])]
     private ?string $name = null;
 
     #[ORM\ManyToOne(inversedBy: 'rounds')]
+    #[Groups(['roundEvent'])]
     private ?Event $event = null;
 
     /**
@@ -35,9 +39,11 @@ class Round
     private Collection $pilotRoundCategories;
 
     #[ORM\Column(type: Types::DATE_MUTABLE, nullable: true)]
+    #[Groups(['round'])]
     private ?\DateTimeInterface $fromDate = null;
 
     #[ORM\Column(type: Types::DATE_MUTABLE, nullable: true)]
+    #[Groups(['round'])]
     private ?\DateTimeInterface $toDate = null;
 
     public function __construct()

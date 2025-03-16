@@ -4,6 +4,7 @@ namespace App\Entity;
 
 use App\Repository\QualifyingRepository;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Serializer\Attribute\Groups;
 
 #[ORM\Entity(repositoryClass: QualifyingRepository::class)]
 class Qualifying
@@ -11,6 +12,7 @@ class Qualifying
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups(['qualifying'])]
     private ?int $id = null;
 
     #[ORM\ManyToOne(inversedBy: 'qualifyings')]
@@ -18,9 +20,11 @@ class Qualifying
     private ?PilotRoundCategory $pilotRoundCategory = null;
 
     #[ORM\Column]
+    #[Groups(['qualifying'])]
     private ?int $points = null;
 
     #[ORM\Column]
+    #[Groups(['qualifying'])]
     private ?int $passage = null;
 
     public function getId(): ?int
