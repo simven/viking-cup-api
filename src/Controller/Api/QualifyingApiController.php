@@ -33,7 +33,7 @@ class QualifyingApiController extends AbstractController
         return $this->json($roundCategoryPilotsQualifying);
     }
 
-    #[Route('/ranking', name: 'ranking', methods: ['GET'])]
+    #[Route('/ranking', name: 'qualifying_ranking', methods: ['GET'])]
     public function getQualifyingRanking(
         QualifyingBusiness $qualifyingBusiness,
         RoundRepository $roundRepository,

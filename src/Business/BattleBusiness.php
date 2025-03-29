@@ -4,6 +4,7 @@ namespace App\Business;
 
 use App\Entity\Battle;
 use App\Entity\Category;
+use App\Entity\PilotRoundCategory;
 use App\Entity\Round;
 use App\Repository\BattleRepository;
 use App\Repository\BattleVersusRepository;
@@ -19,19 +20,34 @@ readonly class BattleBusiness
     )
     {}
 
+    public function getBattleVersus(Round $round, Category $category)
+    {
+        return $this->battleRepository->getBattleVersus($round, $category);
+    }
+
+    public function resetBattle(Round $round, Category $category): void
+    {
+        $battles = $this->battleRepository->findBy(['round' => $round, 'category' => $category]);
+
+        foreach ($battles as $battle) {
+            $this->em->remove($battle);
+        }
+
+        $this->em->flush();
+    }
+
     public function initBattleVersus(Round $round, Category $category): void
     {
         $battleVersus = $this->battleVersusRepository->findAll();
-
         $qualifyingRanking = $this->qualifyingBusiness->getQualifyingRanking($round, $category);
 
         foreach ($battleVersus as $versus) {
             $pilotRoundCategory1 = $qualifyingRanking[$versus->getPilotQualifPosition1() -1]['pilotRoundCategory'] ?? null;
-            if ($pilotRoundCategory1->isCompeting === false) {
+            if ($pilotRoundCategory1?->isCompeting() === false) {
                 $pilotRoundCategory1 = null;
             }
             $pilotRoundCategory2 = $qualifyingRanking[$versus->getPilotQualifPosition2() -1]['pilotRoundCategory'] ?? null;
-            if ($pilotRoundCategory2->isCompeting === false) {
+            if ($pilotRoundCategory2?->isCompeting() === false) {
                 $pilotRoundCategory2 = null;
             }
 
@@ -66,9 +82,16 @@ readonly class BattleBusiness
         $this->em->flush();
     }
 
-    public function generateNextRound(int $passage): void
+    public function generateNextRound(Round $round, Category $category, int $passage): void
     {
-        $battles = $this->battleRepository->findBy(['passage' => $passage]);
+        $nextPassage = $passage + 1;
+        $nextBattles = $this->battleRepository->getBattleVersus($round, $category, $nextPassage);
+
+        if (count($nextBattles) > 0) {
+            throw new \Exception("Le tour suivant a déjà été généré !");
+        }
+
+        $battles = $this->battleRepository->getBattleVersus($round, $category, $passage);
         $winners = array_filter($battles, fn(Battle $battle) => $battle->getWinner() !== null);
 
         if (count($battles) !== count($winners)) {
@@ -78,8 +101,6 @@ readonly class BattleBusiness
         if (count($winners) === 1) {
             return;
         }
-
-        $nextPassage = $passage + 1;
 
         if ($nextPassage === 5) {
             $this->generateThirdPlacePlayoff($winners, $nextPassage + 1);
@@ -109,6 +130,40 @@ readonly class BattleBusiness
         }
 
         $this->em->flush();
+    }
+
+    public function setBattleWinner(Battle $battle, PilotRoundCategory $winner): void
+    {
+        if ($battle->getWinner() !== null) {
+            $nextPassage = $battle->getPassage() + 1;
+            $nextBattles = $this->battleRepository->getBattleVersus($winner->getRound(), $winner->getCategory(), $nextPassage);
+
+            foreach ($nextBattles as $nextBattle) {
+                if ($battle->getWinner() === $nextBattle->getPilotRoundCategory1()) {
+                    $nextBattle->setPilotRoundCategory1($winner);
+                    $this->em->persist($nextBattle);
+                } elseif ($battle->getWinner() === $nextBattle->getPilotRoundCategory2()) {
+                    $nextBattle->setPilotRoundCategory2($winner);
+                    $this->em->persist($nextBattle);
+                }
+            }
+        }
+
+        $battle->setWinner($winner);
+        $this->em->persist($battle);
+        $this->em->flush();
+    }
+
+    public function getBattleRanking(Round $round, Category $category): array
+    {
+        $battleRanking = $this->battleRepository->getBattleRanking($round, $category);
+
+        return array_map(fn($battle) => [
+            'pilotRoundCategory' => $battle[0] ?? null,
+            'wins' => (int)$battle['wins'],
+            'loses' => (int)$battle['loses'],
+            'last_defeat_passage' => (int)$battle['last_defeat_passage']
+        ], $battleRanking);
     }
 
     private function generateThirdPlacePlayoff(array $winners, int $passage): void

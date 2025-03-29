@@ -4,6 +4,7 @@ namespace App\Entity;
 
 use App\Repository\BattleRepository;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Serializer\Attribute\Groups;
 
 #[ORM\Entity(repositoryClass: BattleRepository::class)]
 class Battle
@@ -11,18 +12,23 @@ class Battle
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups(['battle'])]
     private ?int $id = null;
 
     #[ORM\ManyToOne(inversedBy: 'battles')]
+    #[Groups(['battlePilotRoundCategory1'])]
     private ?PilotRoundCategory $pilotRoundCategory1 = null;
 
     #[ORM\ManyToOne(inversedBy: 'battles')]
+    #[Groups(['battlePilotRoundCategory2'])]
     private ?PilotRoundCategory $pilotRoundCategory2 = null;
 
     #[ORM\ManyToOne]
+    #[Groups(['battleWinner'])]
     private ?PilotRoundCategory $winner = null;
 
     #[ORM\Column(nullable: true)]
+    #[Groups(['battle'])]
     private ?int $passage = null;
 
     public function getId(): ?int
