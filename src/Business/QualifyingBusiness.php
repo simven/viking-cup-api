@@ -89,7 +89,13 @@ readonly class QualifyingBusiness
         $ranking = [];
         /** @var PilotRoundCategory $pilotRoundCategory */
         foreach ($pilotRoundCategories as $pilotRoundCategory) {
-            $maxPilotPoints = $pilotRoundCategory->getQualifyings()->first()->getPoints();
+            $firstQualifying = $pilotRoundCategory->getQualifyings()->first();
+
+            if ($firstQualifying === false) {
+                continue;
+            }
+
+            $maxPilotPoints = $firstQualifying->getPoints();
             foreach ($pilotRoundCategory->getQualifyings() as $qualifying) {
                 if ($qualifying->getPoints() > $maxPilotPoints) {
                     $maxPilotPoints = $qualifying->getPoints();

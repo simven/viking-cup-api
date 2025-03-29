@@ -6,6 +6,7 @@ use App\Entity\Battle;
 use App\Entity\Category;
 use App\Entity\PilotRoundCategory;
 use App\Entity\Round;
+use App\Repository\BattleRankingPointsRepository;
 use App\Repository\BattleRepository;
 use App\Repository\BattleVersusRepository;
 use Doctrine\ORM\EntityManagerInterface;
@@ -15,12 +16,13 @@ readonly class BattleBusiness
     public function __construct(
         private BattleVersusRepository $battleVersusRepository,
         private BattleRepository $battleRepository,
+        private BattleRankingPointsRepository $battleRankingPointsRepository,
         private QualifyingBusiness $qualifyingBusiness,
         private EntityManagerInterface $em
     )
     {}
 
-    public function getBattleVersus(Round $round, Category $category)
+    public function getBattleVersus(Round $round, Category $category): array
     {
         return $this->battleRepository->getBattleVersus($round, $category);
     }
@@ -156,14 +158,19 @@ readonly class BattleBusiness
 
     public function getBattleRanking(Round $round, Category $category): array
     {
-        $battleRanking = $this->battleRepository->getBattleRanking($round, $category);
+        $battlesRanking = $this->battleRepository->getBattleRanking($round, $category);
 
-        return array_map(fn($battle) => [
+        $battlesRanking = array_map(fn($battle) => [
             'pilotRoundCategory' => $battle[0] ?? null,
-            'wins' => (int)$battle['wins'],
-            'loses' => (int)$battle['loses'],
-            'last_defeat_passage' => (int)$battle['last_defeat_passage']
-        ], $battleRanking);
+        ], $battlesRanking);
+
+        $battleRankingPoints = $this->battleRankingPointsRepository->findAll();
+
+        foreach ($battlesRanking as $pos => &$battleRanking) {
+            $battleRanking['points'] = $this->getPointsByPosition($pos + 1, $battleRankingPoints);
+        }
+
+        return $battlesRanking;
     }
 
     private function generateThirdPlacePlayoff(array $winners, int $passage): void
@@ -180,5 +187,14 @@ readonly class BattleBusiness
             ->setPassage($passage);
 
         $this->em->persist($battle);
+    }
+
+    private function getPointsByPosition($position, $battleRankingPoints): int
+    {
+        $filtered = array_filter($battleRankingPoints, fn($rangePoints) =>
+            $position >= $rangePoints->getFromPosition() && $position <= $rangePoints->getToPosition()
+        );
+
+        return !empty($filtered) ? reset($filtered)->getPoints() : 0;
     }
 }

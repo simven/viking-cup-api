@@ -53,7 +53,6 @@ class BattleRepository extends ServiceEntityRepository
             ->select([
                 'prc',
                 'SUM(CASE WHEN b.winner = prc THEN 1 ELSE 0 END) AS wins',
-                'SUM(CASE WHEN b.winner != prc THEN 1 ELSE 0 END) AS loses',
                 'MAX(CASE WHEN b.winner != prc THEN b.passage ELSE 0 END) AS last_defeat_passage'
             ])
             ->leftJoin('b.pilotRoundCategory1', 'prc1')
