@@ -6,7 +6,8 @@ use App\Entity\Battle;
 use App\Entity\Category;
 use App\Entity\PilotRoundCategory;
 use App\Entity\Round;
-use App\Repository\BattleRankingPointsRepository;
+use App\Helper\RankingHelper;
+use App\Repository\RankingPointsRepository;
 use App\Repository\BattleRepository;
 use App\Repository\BattleVersusRepository;
 use Doctrine\ORM\EntityManagerInterface;
@@ -14,11 +15,12 @@ use Doctrine\ORM\EntityManagerInterface;
 readonly class BattleBusiness
 {
     public function __construct(
-        private BattleVersusRepository $battleVersusRepository,
-        private BattleRepository $battleRepository,
-        private BattleRankingPointsRepository $battleRankingPointsRepository,
-        private QualifyingBusiness $qualifyingBusiness,
-        private EntityManagerInterface $em
+        private BattleVersusRepository  $battleVersusRepository,
+        private BattleRepository        $battleRepository,
+        private RankingPointsRepository $rankingPointsRepository,
+        private QualifyingBusiness      $qualifyingBusiness,
+        private RankingHelper           $rankingHelper,
+        private EntityManagerInterface  $em
     )
     {}
 
@@ -29,7 +31,7 @@ readonly class BattleBusiness
 
     public function resetBattle(Round $round, Category $category): void
     {
-        $battles = $this->battleRepository->findBy(['round' => $round, 'category' => $category]);
+        $battles = $this->battleRepository->getBattleVersus($round, $category);
 
         foreach ($battles as $battle) {
             $this->em->remove($battle);
@@ -164,10 +166,10 @@ readonly class BattleBusiness
             'pilotRoundCategory' => $battle[0] ?? null,
         ], $battlesRanking);
 
-        $battleRankingPoints = $this->battleRankingPointsRepository->findAll();
+        $battleRankingPoints = $this->rankingPointsRepository->findBy(['entity' => 'battle']);
 
         foreach ($battlesRanking as $pos => &$battleRanking) {
-            $battleRanking['points'] = $this->getPointsByPosition($pos + 1, $battleRankingPoints);
+            $battleRanking['points'] = $this->rankingHelper->getPointsByPosition($pos + 1, $battleRankingPoints);
         }
 
         return $battlesRanking;
@@ -187,14 +189,5 @@ readonly class BattleBusiness
             ->setPassage($passage);
 
         $this->em->persist($battle);
-    }
-
-    private function getPointsByPosition($position, $battleRankingPoints): int
-    {
-        $filtered = array_filter($battleRankingPoints, fn($rangePoints) =>
-            $position >= $rangePoints->getFromPosition() && $position <= $rangePoints->getToPosition()
-        );
-
-        return !empty($filtered) ? reset($filtered)->getPoints() : 0;
     }
 }

@@ -8,8 +8,10 @@ use App\Entity\Category;
 use App\Entity\PilotRoundCategory;
 use App\Entity\Qualifying;
 use App\Entity\Round;
+use App\Helper\RankingHelper;
 use App\Repository\PilotRoundCategoryRepository;
 use App\Repository\QualifyingRepository;
+use App\Repository\RankingPointsRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Serializer\SerializerInterface;
 
@@ -18,6 +20,8 @@ readonly class QualifyingBusiness
     public function __construct(
         private PilotRoundCategoryRepository $pilotRoundCategoryRepository,
         private QualifyingRepository $qualifyingRepository,
+        private RankingPointsRepository $rankingPointsRepository,
+        private RankingHelper $rankingHelper,
         private SerializerInterface $serializer,
         private EntityManagerInterface $em
     )
@@ -85,6 +89,7 @@ readonly class QualifyingBusiness
     public function getQualifyingRanking(Round $round, Category $category): array
     {
         $pilotRoundCategories = $this->pilotRoundCategoryRepository->findByRoundCategory($round, $category);
+        $rankingPoints = $this->rankingPointsRepository->findBy(['entity' => 'qualifying']);
 
         $ranking = [];
         /** @var PilotRoundCategory $pilotRoundCategory */
@@ -104,11 +109,15 @@ readonly class QualifyingBusiness
 
             $ranking[] = [
                 'pilotRoundCategory' => $pilotRoundCategory,
-                'points' => $maxPilotPoints
+                'bestPassagePoints' => $maxPilotPoints
             ];
         }
 
-        usort($ranking, fn($a, $b) => $b['points'] <=> $a['points']);
+        usort($ranking, fn($a, $b) => $b['bestPassagePoints'] <=> $a['bestPassagePoints']);
+
+        foreach ($ranking as $pos => &$rank) {
+            $rank['points'] = $this->rankingHelper->getPointsByPosition($pos + 1, $rankingPoints);
+        }
 
         return $ranking;
     }

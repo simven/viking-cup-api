@@ -2,14 +2,8 @@
 
 namespace App\Business;
 
-use App\Entity\Battle;
 use App\Entity\Category;
-use App\Entity\PilotRoundCategory;
 use App\Entity\Round;
-use App\Repository\BattleRankingPointsRepository;
-use App\Repository\BattleRepository;
-use App\Repository\BattleVersusRepository;
-use Doctrine\ORM\EntityManagerInterface;
 
 readonly class RankingBusiness
 {
