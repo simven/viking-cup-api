@@ -2,6 +2,7 @@
 
 namespace App\Business;
 
+use App\Entity\Event;
 use App\Repository\RoundRepository;
 
 readonly class RoundBusiness
@@ -11,8 +12,12 @@ readonly class RoundBusiness
     )
     {}
 
-    public function getRounds(): array
+    public function getRounds(?Event $event = null): array
     {
+        if ($event !== null) {
+            return $this->roundRepository->findBy(['event' => $event]);
+        }
+
         return $this->roundRepository->findAll();
     }
 }

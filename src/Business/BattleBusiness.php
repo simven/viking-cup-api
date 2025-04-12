@@ -163,7 +163,7 @@ readonly class BattleBusiness
         $battlesRanking = $this->battleRepository->getBattleRanking($round, $category);
 
         $battlesRanking = array_map(fn($battle) => [
-            'pilotRoundCategory' => $battle[0] ?? null,
+            'pilot' => isset($battle[0]) ? $battle[0]->getPilot() : null,
         ], $battlesRanking);
 
         $battleRankingPoints = $this->rankingPointsRepository->findBy(['entity' => 'battle']);

@@ -108,7 +108,7 @@ readonly class QualifyingBusiness
             }
 
             $ranking[] = [
-                'pilotRoundCategory' => $pilotRoundCategory,
+                'pilot' => $pilotRoundCategory->getPilot(),
                 'bestPassagePoints' => $maxPilotPoints
             ];
         }
