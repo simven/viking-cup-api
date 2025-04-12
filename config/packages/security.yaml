@@ -41,7 +41,7 @@ security:
         - { path: ^/api/token_check, roles: PUBLIC_ACCESS }
         - { path: ^/api/medias, roles: PUBLIC_ACCESS }
         - { path: ^/api/sponsors, roles: PUBLIC_ACCESS }
-        - { path: ^/api, roles: PUBLIC_ACCESS }
+        - { path: ^/api, roles: IS_AUTHENTICATED_FULLY }
 
 
 when@test:
