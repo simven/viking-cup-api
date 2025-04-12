@@ -47,13 +47,7 @@ readonly class BattleBusiness
 
         foreach ($battleVersus as $versus) {
             $pilotRoundCategory1 = $qualifyingRanking[$versus->getPilotQualifPosition1() -1]['pilotRoundCategory'] ?? null;
-            if ($pilotRoundCategory1?->isCompeting() === false) {
-                $pilotRoundCategory1 = null;
-            }
             $pilotRoundCategory2 = $qualifyingRanking[$versus->getPilotQualifPosition2() -1]['pilotRoundCategory'] ?? null;
-            if ($pilotRoundCategory2?->isCompeting() === false) {
-                $pilotRoundCategory2 = null;
-            }
 
             if ($pilotRoundCategory1 !== null && $pilotRoundCategory2 !== null) {
                 if ($pilotRoundCategory1->getSecondPilot()?->getId() === $pilotRoundCategory2->getPilot()->getId() ||

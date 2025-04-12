@@ -94,6 +94,10 @@ readonly class QualifyingBusiness
         $ranking = [];
         /** @var PilotRoundCategory $pilotRoundCategory */
         foreach ($pilotRoundCategories as $pilotRoundCategory) {
+            if ($pilotRoundCategory->isCompeting() === false) {
+                continue;
+            }
+
             $firstQualifying = $pilotRoundCategory->getQualifyings()->first();
 
             if ($firstQualifying === false) {

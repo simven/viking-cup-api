@@ -23,9 +23,9 @@ class PilotEvent
     #[ORM\JoinColumn(nullable: false)]
     private ?Event $event = null;
 
-    #[ORM\Column(length: 10, nullable: true)]
+    #[ORM\Column(nullable: true)]
     #[Groups(['pilotEvent'])]
-    private ?string $pilotNumber = null;
+    private ?int $pilotNumber = null;
 
     #[ORM\Column]
     #[Groups(['pilotEvent'])]
@@ -60,12 +60,12 @@ class PilotEvent
         return $this;
     }
 
-    public function getPilotNumber(): ?string
+    public function getPilotNumber(): ?int
     {
         return $this->pilotNumber;
     }
 
-    public function setPilotNumber(?string $pilotNumber): static
+    public function setPilotNumber(?int $pilotNumber): static
     {
         $this->pilotNumber = $pilotNumber;
 
