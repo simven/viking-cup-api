@@ -99,7 +99,10 @@ class BilletwebBusiness
                         $pilotEvent->setPilot($pilot)
                             ->setEvent($round->getEvent())
                             ->setReceiveWindscreenBand(false);
-                        // TODO: Generate pilot number
+
+                        $lastPilotNumber = $this->pilotEventRepository->getLastPilotNumberForCategory($round->getEvent(), $category);
+                        $pilotNumber = $lastPilotNumber === 0 ? $category->getId() === 1 ? 100 : 1 : $lastPilotNumber + 1;
+                        $pilotEvent->setPilotNumber($pilotNumber);
 
                         $this->em->persist($pilotEvent);
                     }
