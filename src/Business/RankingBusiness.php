@@ -40,6 +40,9 @@ readonly class RankingBusiness
                 if (!isset($eventRanking[$pilot->getId()])) {
                     $eventRanking[$pilot->getId()] = [
                         'pilot' => $pilot,
+                        'pilotEvent' => $entry['pilotEvent'] ?? null,
+                        'round' => $round,
+                        'category' => $category,
                         'points' => 0,
                     ];
                 }
@@ -64,10 +67,8 @@ readonly class RankingBusiness
             $points = $entry['points'];
 
             if (!isset($carry[$pilotId])) {
-                $carry[$pilotId] = [
-                    'pilot' => $entry['pilot'],
-                    'points' => 0
-                ];
+                $entry['points'] = 0;
+                $carry[$pilotId] = $entry;
             }
 
             $carry[$pilotId]['points'] += $points;

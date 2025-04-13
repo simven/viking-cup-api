@@ -4,6 +4,7 @@ namespace App\Business;
 
 use App\Entity\Battle;
 use App\Entity\Category;
+use App\Entity\Pilot;
 use App\Entity\PilotRoundCategory;
 use App\Entity\Round;
 use App\Helper\RankingHelper;
@@ -46,8 +47,14 @@ readonly class BattleBusiness
         $qualifyingRanking = $this->qualifyingBusiness->getQualifyingRanking($round, $category);
 
         foreach ($battleVersus as $versus) {
-            $pilotRoundCategory1 = $qualifyingRanking[$versus->getPilotQualifPosition1() -1]['pilotRoundCategory'] ?? null;
-            $pilotRoundCategory2 = $qualifyingRanking[$versus->getPilotQualifPosition2() -1]['pilotRoundCategory'] ?? null;
+            /** @var Pilot $pilot1 */
+            $pilot1 = $qualifyingRanking[$versus->getPilotQualifPosition1() -1]['pilot'] ?? null;
+            $pilotRoundCategory1 = $pilot1?->getPilotRoundCategories()->filter(fn(PilotRoundCategory $pilotRoundCategory) => $pilotRoundCategory->getRound()->getId() === $round->getId() && $pilotRoundCategory->getCategory()->getId() === $category->getId())->first();
+            $pilotRoundCategory1 = $pilotRoundCategory1 !== false ? $pilotRoundCategory1 : null;
+
+            $pilot2 = $qualifyingRanking[$versus->getPilotQualifPosition2() -1]['pilot'] ?? null;
+            $pilotRoundCategory2 = $pilot2?->getPilotRoundCategories()->filter(fn(PilotRoundCategory $pilotRoundCategory) => $pilotRoundCategory->getRound()->getId() === $round->getId() && $pilotRoundCategory->getCategory()->getId() === $category->getId())->first();
+            $pilotRoundCategory2 = $pilotRoundCategory2 !== false ? $pilotRoundCategory2 : null;
 
             if ($pilotRoundCategory1 !== null && $pilotRoundCategory2 !== null) {
                 if ($pilotRoundCategory1->getSecondPilot()?->getId() === $pilotRoundCategory2->getPilot()->getId() ||
@@ -70,7 +77,7 @@ readonly class BattleBusiness
                 ->setPassage(1);
 
             // if one of versus is null, so the other is the winner
-            if ($pilotRoundCategory1 === null || $pilotRoundCategory2 === null) {
+            if ($pilot1 === null || $pilot2 === null) {
                 $winner = $pilotRoundCategory1 ?? $pilotRoundCategory2;
                 $battle->setWinner($winner);
             }
@@ -158,6 +165,9 @@ readonly class BattleBusiness
 
         $battlesRanking = array_map(fn($battle) => [
             'pilot' => isset($battle[0]) ? $battle[0]->getPilot() : null,
+            'pilotEvent' => isset($battle[0]) ? $battle[0]->getPilot()->getPilotEvents()->filter(fn($pe) => $pe->getEvent()->getId() === $round->getEvent()->getId())->first() : null,
+            'round' => $round,
+            'category' => $category,
         ], $battlesRanking);
 
         $battleRankingPoints = $this->rankingPointsRepository->findBy(['entity' => 'battle']);

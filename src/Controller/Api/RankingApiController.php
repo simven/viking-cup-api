@@ -28,7 +28,7 @@ class RankingApiController extends AbstractController
 
         $rankingPilotRoundCategory = $rankingBusiness->getRoundRanking($round, $category);
 
-        return $this->json($rankingPilotRoundCategory, 200, [], ['groups' => ['pilotRoundCategory', 'pilotRoundCategoryPilot', 'pilot']]);
+        return $this->json($rankingPilotRoundCategory, 200, [], ['groups' => ['pilot', 'pilotEvent', 'round', 'category']]);
     }
 
     #[Route('/event', name: 'event_ranking', methods: ['GET'])]
@@ -45,6 +45,6 @@ class RankingApiController extends AbstractController
 
         $rankingPilotEventCategory = $rankingBusiness->getEventRanking($event, $category);
 
-        return $this->json($rankingPilotEventCategory, 200, [], ['groups' => ['pilotRoundCategory', 'pilotRoundCategoryPilot', 'pilot']]);
+        return $this->json($rankingPilotEventCategory, 200, [], ['groups' => ['pilot', 'pilotEvent', 'round', 'category']]);
     }
 }

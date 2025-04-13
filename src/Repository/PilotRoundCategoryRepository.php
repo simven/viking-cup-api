@@ -28,14 +28,18 @@ class PilotRoundCategoryRepository extends ServiceEntityRepository
 
         if ($pilot !== null) {
             $qb->innerJoin('prc.pilot', 'p')
+                ->innerJoin('p.pilotEvents', 'pe')
+                ->andWhere('pe.event = :event')
                 ->andWhere('
                     p.firstName LIKE :pilot OR
                     p.lastName LIKE :pilot OR
                     CONCAT(p.firstName, \' \', p.lastName) LIKE :pilot OR
                     CONCAT(p.lastName, \' \', p.firstName) LIKE :pilot OR
                     p.email LIKE :pilot OR
-                    p.phoneNumber LIKE :pilot
+                    p.phoneNumber LIKE :pilot OR
+                    pe.pilotNumber LIKE :pilot
                 ')
+                ->setParameter('event', $round->getEvent())
                 ->setParameter('pilot', "%$pilot%");
         }
 

@@ -3,7 +3,7 @@
 namespace App\Controller\Api;
 
 use App\Business\QualifyingBusiness;
-use App\Dto\RoundCategoryPilotsQualifyingDto;
+use App\Dto\QualifDto;
 use App\Repository\CategoryRepository;
 use App\Repository\RoundRepository;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -47,16 +47,16 @@ class QualifyingApiController extends AbstractController
 
         $qualifyingRanking = $qualifyingBusiness->getQualifyingRanking($round, $category);
 
-        return $this->json($qualifyingRanking, 200, [], ['groups' => ['pilotRoundCategory', 'pilotRoundCategoryPilot', 'pilot']]);
+        return $this->json($qualifyingRanking, 200, [], ['groups' => ['pilot', 'pilotEvent', 'round', 'category']]);
     }
 
     #[Route('', name: 'update', methods: ['PUT'])]
-    public function updateRoundCategoryPilotsQualifying(
+    public function updateQualifying(
         QualifyingBusiness $qualifyingBusiness,
-        #[MapRequestPayload(type: RoundCategoryPilotsQualifyingDto::class)] array $roundCategoryPilotsQualifyingDto
+        #[MapRequestPayload] QualifDto $qualifDto
     ): Response
     {
-        $qualifyingBusiness->updateRoundCategoryPilotsQualifying($roundCategoryPilotsQualifyingDto);
+        $qualifyingBusiness->updateQualifying($qualifDto);
 
         return new Response();
     }

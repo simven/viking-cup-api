@@ -21,6 +21,7 @@ class PilotEvent
 
     #[ORM\ManyToOne(inversedBy: 'pilotEvents')]
     #[ORM\JoinColumn(nullable: false)]
+    #[Groups(['pilotEventEvent'])]
     private ?Event $event = null;
 
     #[ORM\Column(nullable: true)]

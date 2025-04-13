@@ -3,7 +3,6 @@
 namespace App\Business;
 
 use App\Dto\QualifDto;
-use App\Dto\RoundCategoryPilotsQualifyingDto;
 use App\Entity\Category;
 use App\Entity\PilotRoundCategory;
 use App\Entity\Qualifying;
@@ -13,6 +12,7 @@ use App\Repository\PilotRoundCategoryRepository;
 use App\Repository\QualifyingRepository;
 use App\Repository\RankingPointsRepository;
 use Doctrine\ORM\EntityManagerInterface;
+use Exception;
 use Symfony\Component\Serializer\SerializerInterface;
 
 readonly class QualifyingBusiness
@@ -47,43 +47,33 @@ readonly class QualifyingBusiness
         return $roundCategoryPilotsQualifyingFormatted;
     }
 
-    public function updateRoundCategoryPilotsQualifying(array $roundCategoryPilotsQualifyingDto): void
+    public function updateQualifying(QualifDto $qualifDto): void
     {
-        /** @var RoundCategoryPilotsQualifyingDto $roundCategoryPilotQualif */
-        foreach ($roundCategoryPilotsQualifyingDto as $roundCategoryPilotQualif) {
-            $pilotRoundCategory = $this->pilotRoundCategoryRepository->find($roundCategoryPilotQualif->id);
+        $pilotRoundCategory = $this->pilotRoundCategoryRepository->find($qualifDto->pilotRoundCategoryId);
 
-            if (!$pilotRoundCategory) {
-                continue;
-            }
-
-            $pilotRoundCategory->setIsCompeting($roundCategoryPilotQualif->isCompeting);
-
-            $qualifs = $this->serializer->denormalize($roundCategoryPilotQualif->qualifs, QualifDto::class . '[]');
-            /** @var QualifDto $qualif */
-            foreach ($qualifs as $qualif) {
-                if ($qualif->passage !== null) {
-                    $qualifying = $this->qualifyingRepository->findOneBy(['pilotRoundCategory' => $pilotRoundCategory, 'passage' => $qualif->passage]);
-
-                    if ($qualif->points === null) {
-                        if ($qualifying !== null) {
-                            $this->em->remove($qualifying);
-                        }
-                    } else {
-                        if ($qualifying === null) {
-                            $qualifying = new Qualifying();
-                            $qualifying->setPilotRoundCategory($pilotRoundCategory)
-                                ->setPassage($qualif->passage);
-                        }
-                        $qualifying->setPoints($qualif->points);
-
-                        $this->em->persist($qualifying);
-                    }
-                }
-            }
+        if (!$pilotRoundCategory) {
+            throw new Exception('Pilot Round Category not found');
         }
 
-        $this->em->flush();
+        if ($qualifDto->passage !== null) {
+            $qualifying = $this->qualifyingRepository->findOneBy(['pilotRoundCategory' => $pilotRoundCategory, 'passage' => $qualifDto->passage]);
+
+            if ($qualifDto->points === null) {
+                if ($qualifying !== null) {
+                    $this->em->remove($qualifying);
+                }
+            } else {
+                if ($qualifying === null) {
+                    $qualifying = new Qualifying();
+                    $qualifying->setPilotRoundCategory($pilotRoundCategory)
+                        ->setPassage($qualifDto->passage);
+                }
+                $qualifying->setPoints($qualifDto->points);
+
+                $this->em->persist($qualifying);
+                $this->em->flush();
+            }
+        }
     }
 
     public function getQualifyingRanking(Round $round, Category $category): array
@@ -111,8 +101,13 @@ readonly class QualifyingBusiness
                 }
             }
 
+            $pilotEvent = $pilotRoundCategory->getPilot()->getPilotEvents()->filter(fn($pe) => $pe->getEvent()->getId() === $round->getEvent()->getId())->first();
+
             $ranking[] = [
                 'pilot' => $pilotRoundCategory->getPilot(),
+                'pilotEvent' => !$pilotEvent ? null : $pilotEvent,
+                'round' => $round,
+                'category' => $category,
                 'bestPassagePoints' => $maxPilotPoints
             ];
         }
