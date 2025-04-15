@@ -27,6 +27,9 @@ class Category
     #[ORM\OneToMany(targetEntity: PilotRoundCategory::class, mappedBy: 'category')]
     private Collection $pilotRoundCategories;
 
+    #[ORM\OneToOne(mappedBy: 'category', cascade: ['persist', 'remove'])]
+    private ?PilotNumberCounter $pilotNumberCounter = null;
+
     public function __construct()
     {
         $this->pilotRoundCategories = new ArrayCollection();
@@ -75,6 +78,28 @@ class Category
                 $pilotRoundCategory->setCategory(null);
             }
         }
+
+        return $this;
+    }
+
+    public function getPilotNumberCounter(): ?PilotNumberCounter
+    {
+        return $this->pilotNumberCounter;
+    }
+
+    public function setPilotNumberCounter(?PilotNumberCounter $pilotNumberCounter): static
+    {
+        // unset the owning side of the relation if necessary
+        if ($pilotNumberCounter === null && $this->pilotNumberCounter !== null) {
+            $this->pilotNumberCounter->setCategory(null);
+        }
+
+        // set the owning side of the relation if necessary
+        if ($pilotNumberCounter !== null && $pilotNumberCounter->getCategory() !== $this) {
+            $pilotNumberCounter->setCategory($this);
+        }
+
+        $this->pilotNumberCounter = $pilotNumberCounter;
 
         return $this;
     }

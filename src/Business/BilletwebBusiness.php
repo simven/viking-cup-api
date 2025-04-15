@@ -100,8 +100,11 @@ class BilletwebBusiness
                             ->setEvent($round->getEvent())
                             ->setReceiveWindscreenBand(false);
 
-                        $lastPilotNumber = $this->pilotEventRepository->getLastPilotNumberForCategory($round->getEvent(), $category);
-                        $pilotNumber = $lastPilotNumber === 0 ? $category->getId() === 1 ? 100 : 1 : $lastPilotNumber + 1;
+                        $pilotNumberCounter = $category->getPilotNumberCounter();
+                        $pilotNumber = $pilotNumberCounter->getPilotNumberCounter() + 1;
+                        $pilotNumberCounter->setPilotNumberCounter($pilotNumber);
+                        $this->em->persist($pilotNumberCounter);
+
                         $pilotEvent->setPilotNumber($pilotNumber);
 
                         $this->em->persist($pilotEvent);
