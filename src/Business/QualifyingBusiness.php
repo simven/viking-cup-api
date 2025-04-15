@@ -95,7 +95,9 @@ readonly class QualifyingBusiness
             }
 
             $maxPilotPoints = $firstQualifying->getPoints();
+            $passagePoints = [];
             foreach ($pilotRoundCategory->getQualifyings() as $qualifying) {
+                $passagePoints[$qualifying->getPassage()] = $qualifying->getPoints();
                 if ($qualifying->getPoints() > $maxPilotPoints) {
                     $maxPilotPoints = $qualifying->getPoints();
                 }
@@ -108,11 +110,27 @@ readonly class QualifyingBusiness
                 'pilotEvent' => !$pilotEvent ? null : $pilotEvent,
                 'round' => $round,
                 'category' => $category,
+                'passagePoints' => $passagePoints,
                 'bestPassagePoints' => $maxPilotPoints
             ];
         }
 
-        usort($ranking, fn($a, $b) => $b['bestPassagePoints'] <=> $a['bestPassagePoints']);
+        usort($ranking, function ($a, $b) {
+            if ($b['bestPassagePoints'] !== $a['bestPassagePoints']) {
+                return $b['bestPassagePoints'] - $a['bestPassagePoints'];
+            }
+
+            $sumPassagePointsB = array_sum($b['passagePoints']);
+            $sumPassagePointsA = array_sum($a['passagePoints']);
+            if ($sumPassagePointsB !== $sumPassagePointsA) {
+                return $sumPassagePointsB - $sumPassagePointsA;
+            }
+
+            $bestPassageB = array_search($b['bestPassagePoints'], $b['passagePoints']);
+            $bestPassageA = array_search($a['bestPassagePoints'], $a['passagePoints']);
+
+            return $bestPassageA - $bestPassageB;
+        });
 
         foreach ($ranking as $pos => &$rank) {
             $rank['points'] = $this->rankingHelper->getPointsByPosition($pos + 1, $rankingPoints);
