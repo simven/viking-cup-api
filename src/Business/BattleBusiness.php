@@ -12,6 +12,7 @@ use App\Repository\RankingPointsRepository;
 use App\Repository\BattleRepository;
 use App\Repository\BattleVersusRepository;
 use Doctrine\ORM\EntityManagerInterface;
+use Exception;
 
 readonly class BattleBusiness
 {
@@ -45,6 +46,8 @@ readonly class BattleBusiness
     {
         $battleVersus = $this->battleVersusRepository->findAll();
         $qualifyingRanking = $this->qualifyingBusiness->getQualifyingRanking($round, $category);
+
+        $qualifyingRanking = $this->getBattleQualifier($category, $qualifyingRanking);
 
         foreach ($battleVersus as $versus) {
             /** @var Pilot $pilot1 */
@@ -87,20 +90,47 @@ readonly class BattleBusiness
         $this->em->flush();
     }
 
+    public function getBattleQualifier(Category $category, array $qualifyingRanking): array
+    {
+        // if category "Loisir" (id 1) => 16 first pilots
+        if ($category->getId() === 1) {
+            $battleQualifiers = array_slice($qualifyingRanking, 0, 16);
+            $outBattleQualifiers = array_slice($qualifyingRanking, 16);
+        // if category "Compétition" (id 2) => 32 first pilots
+        } elseif ($category->getId() === 2) {
+            $battleQualifiers = array_slice($qualifyingRanking, 0, 32);
+            $outBattleQualifiers = array_slice($qualifyingRanking, 32);
+        } else {
+            throw new Exception('Category id is invalid');
+        }
+
+        $lastQualif = end($battleQualifiers);
+        $lastQualifPoints = $lastQualif['bestPassagePoints'] ?? 0;
+
+        // if $lastQualif is in $outBattleQualifiers
+        $outQualifWithSamePoints = array_filter($outBattleQualifiers, fn($item) => $item['bestPassagePoints'] === $lastQualifPoints);
+        if (count($outQualifWithSamePoints) > 0) {
+            // remove all elements with $lastQualifPoints in $battleQualifiers
+            $battleQualifiers = array_filter($battleQualifiers, fn($item) => $item['bestPassagePoints'] !== $lastQualifPoints);
+        }
+
+        return $battleQualifiers;
+    }
+
     public function generateNextRound(Round $round, Category $category, int $passage): void
     {
         $nextPassage = $passage + 1;
         $nextBattles = $this->battleRepository->getBattleVersus($round, $category, $nextPassage);
 
         if (count($nextBattles) > 0) {
-            throw new \Exception("Le tour suivant a déjà été généré !");
+            throw new Exception("Le tour suivant a déjà été généré !");
         }
 
         $battles = $this->battleRepository->getBattleVersus($round, $category, $passage);
-        $winners = array_filter($battles, fn(Battle $battle) => $battle->getWinner() !== null);
+        $winners = array_filter($battles, fn(Battle $battle) => $battle->getWinner() !== null || ($battle->getPilotRoundCategory1() === null && $battle->getPilotRoundCategory2() === null));
 
         if (count($battles) !== count($winners)) {
-            throw new \Exception("Impossible de générer le tour suivant, il manque des gagnants !");
+            throw new Exception("Impossible de générer le tour suivant, il manque des gagnants !");
         }
 
         if (count($winners) === 1) {
@@ -113,11 +143,11 @@ readonly class BattleBusiness
 
         for ($i = 0; $i < count($winners); $i += 2) {
             $winner1 = isset($winners[$i]) ? $winners[$i]->getWinner() : null;
-            if ($winner1->isCompeting() === false) {
+            if ($winner1?->isCompeting() === false) {
                 $winner1 = null;
             }
             $winner2 = isset($winners[$i + 1]) ? $winners[$i + 1]->getWinner() : null;
-            if ($winner2->isCompeting() === false) {
+            if ($winner2?->isCompeting() === false) {
                 $winner2 = null;
             }
 
