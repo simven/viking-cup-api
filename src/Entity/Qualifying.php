@@ -3,6 +3,8 @@
 namespace App\Entity;
 
 use App\Repository\QualifyingRepository;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Serializer\Attribute\Groups;
 
@@ -21,11 +23,23 @@ class Qualifying
 
     #[ORM\Column]
     #[Groups(['qualifying'])]
-    private ?int $points = null;
+    private ?int $passage = null;
 
     #[ORM\Column]
     #[Groups(['qualifying'])]
-    private ?int $passage = null;
+    private ?bool $isValid = null;
+
+    /**
+     * @var Collection<int, QualifyingDetail>
+     */
+    #[ORM\OneToMany(targetEntity: QualifyingDetail::class, mappedBy: 'qualifying')]
+    #[Groups(['qualifyingDetails'])]
+    private Collection $qualifyingDetails;
+
+    public function __construct()
+    {
+        $this->qualifyingDetails = new ArrayCollection();
+    }
 
     public function getId(): ?int
     {
@@ -44,18 +58,6 @@ class Qualifying
         return $this;
     }
 
-    public function getPoints(): ?int
-    {
-        return $this->points;
-    }
-
-    public function setPoints(int $points): static
-    {
-        $this->points = $points;
-
-        return $this;
-    }
-
     public function getPassage(): ?int
     {
         return $this->passage;
@@ -64,6 +66,48 @@ class Qualifying
     public function setPassage(int $passage): static
     {
         $this->passage = $passage;
+
+        return $this;
+    }
+
+    public function isValid(): ?bool
+    {
+        return $this->isValid;
+    }
+
+    public function setIsValid(bool $isValid): static
+    {
+        $this->isValid = $isValid;
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, QualifyingDetail>
+     */
+    public function getQualifyingDetails(): Collection
+    {
+        return $this->qualifyingDetails;
+    }
+
+    public function addQualifyingDetail(QualifyingDetail $qualifyingDetail): static
+    {
+        if (!$this->qualifyingDetails->contains($qualifyingDetail)) {
+            $this->qualifyingDetails->add($qualifyingDetail);
+            $qualifyingDetail->setQualifying($this);
+        }
+
+        return $this;
+    }
+
+    public function removeQualifyingDetail(QualifyingDetail $qualifyingDetail): static
+    {
+        if ($this->qualifyingDetails->removeElement($qualifyingDetail)) {
+            // set the owning side to null (unless already changed)
+            if ($qualifyingDetail->getQualifying() === $this) {
+                $qualifyingDetail->setQualifying(null);
+            }
+        }
 
         return $this;
     }

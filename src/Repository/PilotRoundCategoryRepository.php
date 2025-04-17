@@ -6,6 +6,7 @@ use App\Entity\Category;
 use App\Entity\PilotRoundCategory;
 use App\Entity\Round;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
+use Doctrine\ORM\Query;
 use Doctrine\Persistence\ManagerRegistry;
 
 /**
@@ -18,13 +19,38 @@ class PilotRoundCategoryRepository extends ServiceEntityRepository
         parent::__construct($registry, PilotRoundCategory::class);
     }
 
-    public function findByRoundCategory(Round $round, Category $category, ?string $pilot = null): array
+    public function findWithCorrectPilotEvent(PilotRoundCategory $pilotRoundCategory): ?PilotRoundCategory
     {
         $qb = $this->createQueryBuilder('prc')
+            ->select('prc, p, pe')
+            ->innerJoin('prc.pilot', 'p')
+            ->leftJoin('p.pilotEvents', 'pe', 'WITH', 'pe.event = :event')
+            ->andWhere('prc = :pilotRoundCategory')
+            ->setParameter('pilotRoundCategory', $pilotRoundCategory)
+            ->setParameter('event', $pilotRoundCategory->getRound()->getEvent());
+
+        return $qb->getQuery()->getOneOrNullResult();
+    }
+
+    public function findByRoundCategoryQuery(
+        Round $round,
+        Category $category,
+        ?string $sort,
+        ?string $order,
+        ?string $pilot = null
+    ): Query
+    {
+        $order = $order ?? 'ASC';
+
+        $qb = $this->createQueryBuilder('prc')
+            ->select('prc, p, pe')
+            ->innerJoin('prc.pilot', 'p')
+            ->leftJoin('p.pilotEvents', 'pe', 'WITH', 'pe.event = :event')
             ->andWhere('prc.round = :round')
             ->andWhere('prc.category = :category')
             ->setParameter('round', $round)
-            ->setParameter('category', $category);
+            ->setParameter('category', $category)
+            ->setParameter('event', $round->getEvent());
 
         if ($pilot !== null) {
             $qb->innerJoin('prc.pilot', 'p')
@@ -43,8 +69,21 @@ class PilotRoundCategoryRepository extends ServiceEntityRepository
                 ->setParameter('pilot', "%$pilot%");
         }
 
-        return $qb->getQuery()
-            ->getResult();
+        switch ($sort) {
+            case 'pilotName':
+                $qb->addOrderBy('p.lastName', $order);
+                break;
+            case 'isCompeting':
+                $qb->addOrderBy('prc.isCompeting', $order);
+                break;
+            case 'pilotNumber':
+                $qb->addOrderBy('pe.pilotNumber', $order);
+                break;
+            default:
+                $qb->addOrderBy('pe.pilotNumber', $order);
+        }
+
+        return $qb->getQuery();
     }
 
     //    /**

@@ -9,77 +9,44 @@ use App\Entity\Qualifying;
 use App\Entity\Round;
 use App\Helper\RankingHelper;
 use App\Repository\PilotRoundCategoryRepository;
-use App\Repository\QualifyingRepository;
+use App\Repository\QualifyingCriteriaRepository;
 use App\Repository\RankingPointsRepository;
 use Doctrine\ORM\EntityManagerInterface;
-use Exception;
-use Symfony\Component\Serializer\SerializerInterface;
 
 readonly class QualifyingBusiness
 {
     public function __construct(
         private PilotRoundCategoryRepository $pilotRoundCategoryRepository,
-        private QualifyingRepository $qualifyingRepository,
         private RankingPointsRepository $rankingPointsRepository,
+        private QualifyingCriteriaRepository $qualifyingCriteriaRepository,
         private RankingHelper $rankingHelper,
-        private SerializerInterface $serializer,
         private EntityManagerInterface $em
     )
     {}
 
-    public function getRoundCategoryPilotsQualifying(Round $round, Category $category, ?string $pilot = null): array
+
+    public function getPilotRoundCategoryPilotQualifying(PilotRoundCategory $pilotRoundCategory): array
     {
-        $roundCategoryPilotsQualifying = $this->pilotRoundCategoryRepository->findByRoundCategory($round, $category, $pilot);
-
-        $roundCategoryPilotsQualifyingFormatted = [];
-        /** @var PilotRoundCategory $roundCategoryPilot */
-        foreach ($roundCategoryPilotsQualifying as $roundCategoryPilot) {
-            $roundCategoryPilotQualifyingFormatted = $this->serializer->normalize($roundCategoryPilot, 'json', ['groups' => ['pilotRoundCategory', 'pilotRoundCategoryPilot', 'pilot', 'pilotRoundCategoryQualifyings', 'qualifying']]);
-
-            $pilotEvent = $roundCategoryPilot->getPilot()->getPilotEvents()->filter(fn($pe) => $pe->getEvent()->getId() === $round->getEvent()->getId())->first();
-            if ($pilotEvent) {
-                $roundCategoryPilotQualifyingFormatted['pilotEvent'] = $this->serializer->normalize($pilotEvent, 'json', ['groups' => ['pilotEvent']]);
-            }
-
-            $roundCategoryPilotsQualifyingFormatted[] = $roundCategoryPilotQualifyingFormatted;
-        }
-
-        return $roundCategoryPilotsQualifyingFormatted;
+        return [
+            'pilotRoundCategory' => $this->pilotRoundCategoryRepository->findWithCorrectPilotEvent($pilotRoundCategory),
+            'pilotQualifyings' => $pilotRoundCategory->getQualifyings()
+        ];
     }
 
-    public function updateQualifying(QualifDto $qualifDto): void
+    public function updateQualifying(Qualifying $qualifying, QualifDto $qualifDto): void
     {
-        $pilotRoundCategory = $this->pilotRoundCategoryRepository->find($qualifDto->pilotRoundCategoryId);
+        $qualifying->setIsValid($qualifDto->isValid);
 
-        if (!$pilotRoundCategory) {
-            throw new Exception('Pilot Round Category not found');
-        }
-
-        if ($qualifDto->passage !== null) {
-            $qualifying = $this->qualifyingRepository->findOneBy(['pilotRoundCategory' => $pilotRoundCategory, 'passage' => $qualifDto->passage]);
-
-            if ($qualifDto->points === null) {
-                if ($qualifying !== null) {
-                    $this->em->remove($qualifying);
-                }
-            } else {
-                if ($qualifying === null) {
-                    $qualifying = new Qualifying();
-                    $qualifying->setPilotRoundCategory($pilotRoundCategory)
-                        ->setPassage($qualifDto->passage);
-                }
-                $qualifying->setPoints($qualifDto->points);
-
-                $this->em->persist($qualifying);
-                $this->em->flush();
-            }
-        }
+        $this->em->persist($qualifying);
+        $this->em->flush();
     }
 
     public function getQualifyingRanking(Round $round, Category $category): array
     {
-        $pilotRoundCategories = $this->pilotRoundCategoryRepository->findByRoundCategory($round, $category);
+        $pilotRoundCategories = $this->pilotRoundCategoryRepository->findBy(['round' => $round, 'category' => $category]);
         $rankingPoints = $this->rankingPointsRepository->findBy(['entity' => 'qualifying']);
+        $criteriaList = $this->qualifyingCriteriaRepository->findBy([], ['priority' => 'ASC']);
+        $groupedCriteriaList = $this->groupedCriteriaList($criteriaList);
 
         $ranking = [];
         /** @var PilotRoundCategory $pilotRoundCategory */
@@ -94,12 +61,13 @@ readonly class QualifyingBusiness
                 continue;
             }
 
-            $maxPilotPoints = $firstQualifying->getPoints();
             $passagePoints = [];
+            $maxPilotPoints = $this->getQualifPassagePoints($firstQualifying);
             foreach ($pilotRoundCategory->getQualifyings() as $qualifying) {
-                $passagePoints[$qualifying->getPassage()] = $qualifying->getPoints();
-                if ($qualifying->getPoints() > $maxPilotPoints) {
-                    $maxPilotPoints = $qualifying->getPoints();
+                $qualifyingPoints = $this->getQualifPassagePoints($qualifying);
+                $passagePoints[$qualifying->getPassage()] = $qualifyingPoints;
+                if ($qualifyingPoints > $maxPilotPoints) {
+                    $maxPilotPoints = $qualifyingPoints;
                 }
             }
 
@@ -111,25 +79,43 @@ readonly class QualifyingBusiness
                 'round' => $round,
                 'category' => $category,
                 'passagePoints' => $passagePoints,
-                'bestPassagePoints' => $maxPilotPoints
+                'bestPassagePoints' => $maxPilotPoints,
+                'qualifs' => $pilotRoundCategory->getQualifyings()->toArray()
             ];
         }
 
-        usort($ranking, function ($a, $b) {
+        usort($ranking, function ($a, $b) use ($groupedCriteriaList) {
+            // comparaison meilleurs passages
             if ($b['bestPassagePoints'] !== $a['bestPassagePoints']) {
                 return $b['bestPassagePoints'] - $a['bestPassagePoints'];
             }
 
+            // comparaison de la somme des points de passage
             $sumPassagePointsB = array_sum($b['passagePoints']);
             $sumPassagePointsA = array_sum($a['passagePoints']);
             if ($sumPassagePointsB !== $sumPassagePointsA) {
                 return $sumPassagePointsB - $sumPassagePointsA;
             }
 
+            // comparaison du passage où le pilote a eu le plus de points
             $bestPassageB = array_search($b['bestPassagePoints'], $b['passagePoints']);
             $bestPassageA = array_search($a['bestPassagePoints'], $a['passagePoints']);
+            if ($bestPassageA - $bestPassageB) {
+                return $bestPassageA - $bestPassageB;
+            }
 
-            return $bestPassageA - $bestPassageB;
+            // comparaison des points par critère de qualification
+            $scoresA = $this->calculateQualifsCriteriaScores($a['qualifs'], $groupedCriteriaList);
+            $scoresB = $this->calculateQualifsCriteriaScores($b['qualifs'], $groupedCriteriaList);
+            foreach ($scoresA as $priority => $groupA) {
+                $groupB = $scoresB[$priority] ?? ['totalPoints' => 0];
+
+                if ($groupB['totalPoints'] !== $groupA['totalPoints']) {
+                    return $groupB['totalPoints'] - $groupA['totalPoints'];
+                }
+            }
+
+            return 0; // égalité parfaite
         });
 
         foreach ($ranking as $pos => &$rank) {
@@ -137,5 +123,58 @@ readonly class QualifyingBusiness
         }
 
         return $ranking;
+    }
+
+    public function groupedCriteriaList(array $criteriaList = []): array
+    {
+        $groupedScores = [];
+
+        foreach ($criteriaList as $criteria) {
+            $priority = $criteria->getPriority();
+            $criteriaId = $criteria->getId();
+
+            if (!isset($groupedScores[$priority])) {
+                $groupedScores[$priority] = [
+                    'criteria' => [],
+                    'totalPoints' => 0,
+                ];
+            }
+
+            $groupedScores[$priority]['criteria'][] = $criteriaId;
+        }
+
+        return $groupedScores;
+    }
+
+    public function calculateQualifsCriteriaScores(array $qualifs, array $groupedCriteriaList): array
+    {
+        // Récupération de toutes les qualifications du pilote
+        foreach ($qualifs as $qualif) {
+            foreach ($qualif->getQualifyingDetails() as $detail) {
+                $criteria = $detail->getQualifyingCriteria();
+                $priority = $criteria->getPriority();
+                $criteriaId = $criteria->getId();
+                $points = $detail->getPoints();
+
+                if (isset($groupedCriteriaList[$priority]) && in_array($criteriaId, $groupedCriteriaList[$priority]['criteria'])) {
+                    $groupedCriteriaList[$priority]['totalPoints'] += $points;
+                }
+            }
+        }
+
+        // Trie par ordre croissant de priorité
+        ksort($groupedCriteriaList);
+
+        return $groupedCriteriaList;
+    }
+
+    public function getQualifPassagePoints(Qualifying $qualifying): float
+    {
+        $points = 0;
+        foreach ($qualifying->getQualifyingDetails() as $qualifyingDetail) {
+            $points += $qualifyingDetail->getPoints();
+        }
+
+        return $points;
     }
 }

@@ -8,6 +8,7 @@ use App\Entity\Category;
 use App\Entity\Pilot;
 use App\Entity\PilotEvent;
 use App\Entity\PilotRoundCategory;
+use App\Entity\Qualifying;
 use App\Entity\Round;
 use App\Helper\ConfigHelper;
 use App\Repository\BilletwebTicketRepository;
@@ -15,6 +16,7 @@ use App\Repository\CategoryRepository;
 use App\Repository\PilotEventRepository;
 use App\Repository\PilotRepository;
 use App\Repository\PilotRoundCategoryRepository;
+use App\Repository\QualifyingRepository;
 use App\Repository\RoundRepository;
 use App\Service\BilletwebService;
 use Doctrine\ORM\EntityManagerInterface;
@@ -34,6 +36,7 @@ class BilletwebBusiness
         private readonly PilotRepository              $pilotRepository,
         private readonly PilotRoundCategoryRepository $pilotRoundCategoryRepository,
         private readonly PilotEventRepository         $pilotEventRepository,
+        private readonly QualifyingRepository         $qualifyingRepository,
         private readonly BilletwebService             $billetwebService,
         private readonly ConfigHelper                 $configHelper,
         private readonly EntityManagerInterface       $em,
@@ -230,6 +233,18 @@ class BilletwebBusiness
                 ->setSecondPilot($secondPilot);
 
             $this->em->persist($pilotRoundCategory);
+        }
+
+        for ($i = 1; $i < 3; $i++) {
+            $qualifying = $this->qualifyingRepository->findOneBy(['pilotRoundCategory' => $pilotRoundCategory, 'passage' => $i]);
+            if ($qualifying === null) {
+                $qualifying = new Qualifying();
+                $qualifying->setPilotRoundCategory($pilotRoundCategory)
+                    ->setPassage($i)
+                    ->setIsValid(true);
+
+                $this->em->persist($qualifying);
+            }
         }
     }
 }

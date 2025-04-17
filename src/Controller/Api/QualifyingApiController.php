@@ -4,7 +4,9 @@ namespace App\Controller\Api;
 
 use App\Business\QualifyingBusiness;
 use App\Dto\QualifDto;
+use App\Entity\Qualifying;
 use App\Repository\CategoryRepository;
+use App\Repository\PilotRoundCategoryRepository;
 use App\Repository\RoundRepository;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
@@ -15,22 +17,18 @@ use Symfony\Component\Routing\Attribute\Route;
 #[Route('/api/qualifying', name: 'api_qualifying')]
 class QualifyingApiController extends AbstractController
 {
-    #[Route('', name: 'list', methods: ['GET'])]
-    public function getRoundCategoryPilotsQualifying(
-        QualifyingBusiness $qualifyingBusiness,
-        RoundRepository $roundRepository,
-        CategoryRepository $categoryRepository,
-        #[MapQueryParameter] int $round,
-        #[MapQueryParameter] int $category,
-        #[MapQueryParameter] ?string $pilot = null
+    #[Route('', name: 'qualifying', methods: ['GET'])]
+    public function getPilotRoundCategoryQualifying(
+        QualifyingBusiness $qualifyingDetailBusiness,
+        PilotRoundCategoryRepository $pilotRoundCategoryRepository,
+        #[MapQueryParameter] int $pilotRoundCategory,
     ): Response
     {
-        $round = $roundRepository->find($round);
-        $category = $categoryRepository->find($category);
+        $pilotRoundCategory = $pilotRoundCategoryRepository->find($pilotRoundCategory);
 
-        $roundCategoryPilotsQualifying = $qualifyingBusiness->getRoundCategoryPilotsQualifying($round, $category, $pilot);
+        $roundCategoryPilotsQualifying = $qualifyingDetailBusiness->getPilotRoundCategoryPilotQualifying($pilotRoundCategory);
 
-        return $this->json($roundCategoryPilotsQualifying);
+        return $this->json($roundCategoryPilotsQualifying, Response::HTTP_OK, [], ['groups' => ['qualifying', 'qualifyingDetails', 'qualifyingDetail', 'qualifyingDetailCriteria', 'qualifyingCriteria', 'pilotRoundCategory', 'pilotRoundCategoryPilot', 'pilot', 'pilotEvents', 'pilotEvent']]);
     }
 
     #[Route('/ranking', name: 'qualifying_ranking', methods: ['GET'])]
@@ -47,16 +45,17 @@ class QualifyingApiController extends AbstractController
 
         $qualifyingRanking = $qualifyingBusiness->getQualifyingRanking($round, $category);
 
-        return $this->json($qualifyingRanking, 200, [], ['groups' => ['pilot', 'pilotEvent', 'round', 'category']]);
+        return $this->json($qualifyingRanking, 200, [], ['groups' => ['pilot', 'pilotEvent', 'round', 'category', 'qualifying']]);
     }
 
-    #[Route('', name: 'update', methods: ['PUT'])]
+    #[Route('/{qualifying}', name: 'update_qualifying', methods: ['PUT'])]
     public function updateQualifying(
         QualifyingBusiness $qualifyingBusiness,
+        Qualifying $qualifying,
         #[MapRequestPayload] QualifDto $qualifDto
     ): Response
     {
-        $qualifyingBusiness->updateQualifying($qualifDto);
+        $qualifyingBusiness->updateQualifying($qualifying, $qualifDto);
 
         return new Response();
     }
