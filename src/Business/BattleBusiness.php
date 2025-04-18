@@ -200,10 +200,13 @@ readonly class BattleBusiness
             'category' => $category,
         ], $battlesRanking);
 
-        $battleRankingPoints = $this->rankingPointsRepository->findBy(['entity' => 'battle']);
-
-        foreach ($battlesRanking as $pos => &$battleRanking) {
-            $battleRanking['points'] = $this->rankingHelper->getPointsByPosition($pos + 1, $battleRankingPoints);
+        if ($round->getId() === 1) {
+            $battlesRanking = $this->overrideBattleRound1($battlesRanking, $category->getId());
+        } else {
+            $battleRankingPoints = $this->rankingPointsRepository->findBy(['entity' => 'battle']);
+            foreach ($battlesRanking as $pos => &$battleRanking) {
+                $battleRanking['points'] = $this->rankingHelper->getPointsByPosition($pos + 1, $battleRankingPoints);
+            }
         }
 
         return $battlesRanking;
@@ -223,5 +226,69 @@ readonly class BattleBusiness
             ->setPassage($passage);
 
         $this->em->persist($battle);
+    }
+
+    public function overrideBattleRound1(array $battleRanking, int $categoryId): array
+    {
+        if ($categoryId === 1) {
+            $overrideRanking = [
+                ['pilotId' => 13, 'pos' => 0, 'points' => 195], // DE CARVALHO
+                ['pilotId' => 15, 'pos' => 1, 'points' => 150], // VICENTE
+                ['pilotId' => 63, 'pos' => 2, 'points' => 100], // KARROUACHE
+                ['pilotId' => 50, 'pos' => 3, 'points' => 45], // BREANT
+                ['pilotId' => 57, 'pos' => 4, 'points' => 30], // DA COSTA
+                ['pilotId' => 24, 'pos' => 5, 'points' => 30], // RAKOTONDRATRIMO
+                ['pilotId' => 10, 'pos' => 6, 'points' => 30], // FELIX
+                ['pilotId' => 54, 'pos' => 5, 'points' => 25], // FAVIER
+                ['pilotId' => 60, 'pos' => 6, 'points' => 20], // LEGROS
+                ['pilotId' => 37, 'pos' => 7, 'points' => 20], // DANGEON
+                ['pilotId' => 33, 'pos' => 8, 'points' => 20], // DELAUNAY
+                ['pilotId' => 53, 'pos' => 9, 'points' => 20], // BONNARD
+                ['pilotId' => 62, 'pos' => 10, 'points' => 20], // FAUVEAU
+                ['pilotId' => 61, 'pos' => 11, 'points' => 20], // LAMBERT
+                ['pilotId' => 9, 'pos' => 12, 'points' => 20] // GLOAGUEN
+            ];
+        } elseif ($categoryId === 2) {
+            $overrideRanking = [
+                ['pilotId' => 48, 'pos' => 0, 'points' => 200], // VAN WEYMEERSCH
+                ['pilotId' => 55, 'pos' => 1, 'points' => 150], // DUCRET
+                ['pilotId' => 59, 'pos' => 2, 'points' => 98], // TROSSET
+                ['pilotId' => 58, 'pos' => 3, 'points' => 50], // LA RUSSA
+                ['pilotId' => 36, 'pos' => 4, 'points' => 30], // THOUIN
+                ['pilotId' => 22, 'pos' => 5, 'points' => 30], // SERABIAN
+                ['pilotId' => 30, 'pos' => 6, 'points' => 30], // MOREIRA
+                ['pilotId' => 23, 'pos' => 7, 'points' => 30], // GUY
+                ['pilotId' => 3, 'pos' => 8, 'points' => 20], // GENIEYS
+                ['pilotId' => 41, 'pos' => 9, 'points' => 20], // MARIEN
+                ['pilotId' => 16, 'pos' => 10, 'points' => 20], // MAON
+                ['pilotId' => 11, 'pos' => 11, 'points' => 20], // PREVOST
+                ['pilotId' => 25, 'pos' => 12, 'points' => 20], // PIOGE
+                ['pilotId' => 1, 'pos' => 13, 'points' => 18], // SANTOS
+            ];
+        }
+
+        if (isset($overrideRanking)) {
+            foreach ($battleRanking as &$ranking) {
+                $pilotOverrideIndex = array_search($ranking['pilot']->getId(), array_column($overrideRanking, 'pilotId'));
+                if ($pilotOverrideIndex === false) {
+                    continue;
+                }
+                $pilotOverride = $overrideRanking[$pilotOverrideIndex];
+
+                $ranking['points'] = $pilotOverride['points'];
+                $ranking['pos'] = $pilotOverride['pos'];
+            }
+            unset($ranking); // pour éviter un bug potentiel de foreach + référence
+
+            // Tri par position croissante
+            usort($battleRanking, fn($a, $b) => $a['pos'] <=> $b['pos']);
+
+            foreach ($battleRanking as &$ranking) {
+                unset($ranking['pos']);
+            }
+            unset($ranking); // sécurité PHP foreach
+        }
+
+        return $battleRanking;
     }
 }

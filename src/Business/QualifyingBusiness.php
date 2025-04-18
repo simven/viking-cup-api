@@ -121,6 +121,10 @@ readonly class QualifyingBusiness
         foreach ($ranking as $pos => &$rank) {
             $rank['points'] = $this->rankingHelper->getPointsByPosition($pos + 1, $rankingPoints);
         }
+        
+        if ($round->getId() === 1) {
+            $ranking = $this->overrideQualifRound1($ranking, $category->getId());
+        }
 
         return $ranking;
     }
@@ -177,4 +181,73 @@ readonly class QualifyingBusiness
 
         return $points;
     }
+
+    public function overrideQualifRound1(array $qualifRanking, int $categoryId): array
+    {
+        if ($categoryId === 1) {
+            $overrideRanking = [
+                ['pilotId' => 13, 'points' => 5, 'pos' => 10],
+                ['pilotId' => 15, 'points' => 40, 'pos' => 3],
+                ['pilotId' => 24, 'points' => 30, 'pos' => 4],
+                ['pilotId' => 33, 'points' => 5, 'pos' => 15],
+                ['pilotId' => 37, 'points' => 5, 'pos' => 9],
+                ['pilotId' => 10, 'points' => 20, 'pos' => 6],
+                ['pilotId' => 50, 'points' => 5, 'pos' => 8],
+                ['pilotId' => 53, 'points' => 5, 'pos' => 7],
+                ['pilotId' => 9, 'points' => 5, 'pos' => 11],
+                ['pilotId' => 57, 'points' => 50, 'pos' => 2],
+                ['pilotId' => 60, 'points' => 20, 'pos' => 5],
+                ['pilotId' => 61, 'points' => 5, 'pos' => 13],
+                ['pilotId' => 62, 'points' => 5, 'pos' => 14],
+                ['pilotId' => 63, 'points' => 60, 'pos' => 1],
+                ['pilotId' => 54, 'points' => 5, 'pos' => 12],
+            ];
+        } elseif ($categoryId === 2) {
+            $overrideRanking = [
+                ['pilotId' => 16, 'points' => 20, 'pos' => 5],
+                ['pilotId' => 22, 'points' => 5, 'pos' => 12],
+                ['pilotId' => 23, 'points' => 5, 'pos' => 14],
+                ['pilotId' => 11, 'points' => 5, 'pos' => 10],
+                ['pilotId' => 25, 'points' => 5, 'pos' => 11],
+                ['pilotId' => 30, 'points' => 20, 'pos' => 7],
+                ['pilotId' => 36, 'points' => 5, 'pos' => 9],
+                ['pilotId' => 41, 'points' => 30, 'pos' => 4],
+                ['pilotId' => 3, 'points' => 40, 'pos' => 3],
+                ['pilotId' => 48, 'points' => 5, 'pos' => 13],
+                ['pilotId' => 1, 'points' => 5, 'pos' => 8],
+                ['pilotId' => 55, 'points' => 50, 'pos' => 2],
+                ['pilotId' => 58, 'points' => 20, 'pos' => 6],
+                ['pilotId' => 59, 'points' => 60, 'pos' => 1],
+                ['pilotId' => 44, 'points' => 5, 'pos' => 15],
+                ['pilotId' => 64, 'points' => 0, 'pos' => 16],
+                ['pilotId' => 40, 'points' => 0, 'pos' => 17],
+            ];
+        }
+
+        if (isset($overrideRanking)) {
+            foreach ($qualifRanking as &$ranking) {
+                $pilotOverrideIndex = array_search($ranking['pilot']->getId(), array_column($overrideRanking, 'pilotId'));
+                if ($pilotOverrideIndex === false) {
+                    continue;
+                }
+                $pilotOverride = $overrideRanking[$pilotOverrideIndex];
+
+                unset($ranking['bestPassagePoints']);
+                $ranking['points'] = $pilotOverride['points'];
+                $ranking['pos'] = $pilotOverride['pos'];
+            }
+            unset($ranking); // sécurité PHP foreach
+
+            // Tri par position croissante
+            usort($qualifRanking, fn($a, $b) => $a['pos'] <=> $b['pos']);
+
+            foreach ($qualifRanking as &$ranking) {
+                unset($ranking['pos']);
+            }
+            unset($ranking); // sécurité PHP foreach
+        }
+
+        return $qualifRanking;
+    }
+
 }
