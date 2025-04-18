@@ -201,6 +201,8 @@ readonly class QualifyingBusiness
                 ['pilotId' => 62, 'points' => 5, 'pos' => 14],
                 ['pilotId' => 63, 'points' => 60, 'pos' => 1],
                 ['pilotId' => 54, 'points' => 5, 'pos' => 12],
+                ['pilotId' => 19, 'points' => 0, 'pos' => 16],
+                ['pilotId' => 20, 'points' => 0, 'pos' => 17],
             ];
         } elseif ($categoryId === 2) {
             $overrideRanking = [
