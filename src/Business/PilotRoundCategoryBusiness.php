@@ -57,6 +57,7 @@ readonly class PilotRoundCategoryBusiness
     public function update(PilotRoundCategory $pilotRoundCategory, PilotRoundCategoryDto $pilotRoundCategoryDto): void
     {
         $pilotRoundCategory->setIsCompeting($pilotRoundCategoryDto->isCompeting);
+        $pilotRoundCategory->setIsEngaged($pilotRoundCategoryDto->isEngaged);
 
         $this->em->persist($pilotRoundCategory);
         $this->em->flush();

@@ -51,7 +51,7 @@ readonly class QualifyingBusiness
         $ranking = [];
         /** @var PilotRoundCategory $pilotRoundCategory */
         foreach ($pilotRoundCategories as $pilotRoundCategory) {
-            if ($pilotRoundCategory->isCompeting() === false) {
+            if ($pilotRoundCategory->isEngaged() === false) {
                 continue;
             }
 
@@ -239,7 +239,7 @@ readonly class QualifyingBusiness
             unset($ranking); // sécurité PHP foreach
 
             // Tri par position croissante
-            usort($qualifRanking, fn($a, $b) => $a['pos'] <=> $b['pos']);
+            usort($qualifRanking, fn($a, $b) => ($a['pos'] ?? PHP_INT_MAX) <=> ($b['pos'] ?? PHP_INT_MAX));
 
             foreach ($qualifRanking as &$ranking) {
                 unset($ranking['pos']);

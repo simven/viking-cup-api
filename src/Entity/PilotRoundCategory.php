@@ -44,6 +44,10 @@ class PilotRoundCategory
     #[Groups(['pilotRoundCategory'])]
     private bool $isCompeting = true;
 
+    #[ORM\Column(options: ['default' => true])]
+    #[Groups(['pilotRoundCategory'])]
+    private bool $isEngaged = true;
+
     /**
      * @var Collection<int, Qualifying>
      */
@@ -141,6 +145,18 @@ class PilotRoundCategory
     public function setIsCompeting(bool $isCompeting): static
     {
         $this->isCompeting = $isCompeting;
+
+        return $this;
+    }
+
+    public function isEngaged(): bool
+    {
+        return $this->isEngaged;
+    }
+
+    public function setIsEngaged(bool $engaged): static
+    {
+        $this->isEngaged = $engaged;
 
         return $this;
     }
