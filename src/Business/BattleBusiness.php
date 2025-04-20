@@ -232,14 +232,14 @@ readonly class BattleBusiness
     {
         if ($categoryId === 1) {
             $overrideRanking = [
-                ['pilotId' => 13, 'pos' => 0, 'points' => 195], // DE CARVALHO
+                ['pilotId' => 13, 'pos' => 0, 'points' => 200], // DE CARVALHO
                 ['pilotId' => 15, 'pos' => 1, 'points' => 150], // VICENTE
                 ['pilotId' => 63, 'pos' => 2, 'points' => 100], // KARROUACHE
-                ['pilotId' => 50, 'pos' => 3, 'points' => 45], // BREANT
+                ['pilotId' => 50, 'pos' => 3, 'points' => 50], // BREANT
                 ['pilotId' => 57, 'pos' => 4, 'points' => 30], // DA COSTA
                 ['pilotId' => 24, 'pos' => 5, 'points' => 30], // RAKOTONDRATRIMO
                 ['pilotId' => 10, 'pos' => 6, 'points' => 30], // FELIX
-                ['pilotId' => 54, 'pos' => 5, 'points' => 25], // FAVIER
+                ['pilotId' => 54, 'pos' => 5, 'points' => 30], // FAVIER
                 ['pilotId' => 60, 'pos' => 6, 'points' => 20], // LEGROS
                 ['pilotId' => 37, 'pos' => 7, 'points' => 20], // DANGEON
                 ['pilotId' => 33, 'pos' => 8, 'points' => 20], // DELAUNAY
@@ -252,7 +252,7 @@ readonly class BattleBusiness
             $overrideRanking = [
                 ['pilotId' => 48, 'pos' => 0, 'points' => 200], // VAN WEYMEERSCH
                 ['pilotId' => 55, 'pos' => 1, 'points' => 150], // DUCRET
-                ['pilotId' => 59, 'pos' => 2, 'points' => 98], // TROSSET
+                ['pilotId' => 59, 'pos' => 2, 'points' => 100], // TROSSET
                 ['pilotId' => 58, 'pos' => 3, 'points' => 50], // LA RUSSA
                 ['pilotId' => 36, 'pos' => 4, 'points' => 30], // THOUIN
                 ['pilotId' => 22, 'pos' => 5, 'points' => 30], // SERABIAN
@@ -263,7 +263,7 @@ readonly class BattleBusiness
                 ['pilotId' => 16, 'pos' => 10, 'points' => 20], // MAON
                 ['pilotId' => 11, 'pos' => 11, 'points' => 20], // PREVOST
                 ['pilotId' => 25, 'pos' => 12, 'points' => 20], // PIOGE
-                ['pilotId' => 1, 'pos' => 13, 'points' => 18], // SANTOS
+                ['pilotId' => 1, 'pos' => 13, 'points' => 20], // SANTOS
             ];
         }
 
