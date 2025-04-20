@@ -177,8 +177,10 @@ readonly class QualifyingBusiness
     public function getQualifPassagePoints(Qualifying $qualifying): float
     {
         $points = 0;
-        foreach ($qualifying->getQualifyingDetails() as $qualifyingDetail) {
-            $points += $qualifyingDetail->getPoints();
+        if ($qualifying->isValid() === true) {
+            foreach ($qualifying->getQualifyingDetails() as $qualifyingDetail) {
+                $points += $qualifyingDetail->getPoints();
+            }
         }
 
         return $points;
