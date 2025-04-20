@@ -120,6 +120,8 @@ readonly class QualifyingBusiness
 
         foreach ($ranking as $pos => &$rank) {
             $rank['points'] = $this->rankingHelper->getPointsByPosition($pos + 1, $rankingPoints);
+            unset($rank['passagePoints']);
+            unset($rank['qualifs']);
         }
         
         if ($round->getId() === 1) {

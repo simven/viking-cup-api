@@ -19,13 +19,16 @@ readonly class RankingBusiness
         $qualifyingRanking = $this->qualifyingBusiness->getQualifyingRanking($round, $category);
         $battleRanking = $this->battleBusiness->getBattleRanking($round, $category);
 
-        // sum of points in qualifying and battles for each pilotRoundCategory
-        $pointsByPilotRoundCategory = $this->sumPointsByPilotRoundCategory($qualifyingRanking, $battleRanking);
+        // sum of points in qualifying and battles for each pilot
+        $roundRanking = $this->sumRoundRankingPoints($qualifyingRanking, $battleRanking);
+
+        // subtract penalties
+        $roundRanking = $this->subtractPenalties($roundRanking);
 
         // sort by total points
-        usort($pointsByPilotRoundCategory, fn($a, $b) => $b['points'] <=> $a['points']);
+        usort($roundRanking, fn($a, $b) => $b['points'] <=> $a['points']);
 
-        return $pointsByPilotRoundCategory;
+        return $roundRanking;
     }
 
     public function getEventRanking(Event $event, Category $category): array
@@ -59,7 +62,7 @@ readonly class RankingBusiness
         return $eventRanking;
     }
 
-    private function sumPointsByPilotRoundCategory(array $qualifyingRanking, array $battleRanking): array {
+    private function sumRoundRankingPoints(array $qualifyingRanking, array $battleRanking): array {
         $rankingMerged = array_merge($qualifyingRanking, $battleRanking);
 
         $grouped = array_reduce($rankingMerged, function ($carry, $entry) {
@@ -77,5 +80,18 @@ readonly class RankingBusiness
         }, []);
 
         return array_values($grouped);
+    }
+
+    private function subtractPenalties($roundRanking)
+    {
+        foreach ($roundRanking as &$rank) {
+            $pilotRoundCategory = $rank['pilot']->getPilotRoundCategories()->filter(fn($pilotRoundCategory) => $pilotRoundCategory->getCategory()->getId() === $rank['category']->getId() && $pilotRoundCategory->getRound()->getId() === $rank['round']->getId())->first();
+
+            if ($pilotRoundCategory !== null) {
+                $rank['points'] -= array_sum(array_map(fn($penalty) => $penalty->getPoints(), $pilotRoundCategory->getPenalties()->toArray()));
+            }
+        }
+
+        return $roundRanking;
     }
 }

@@ -55,9 +55,17 @@ class PilotRoundCategory
     #[Groups(['pilotRoundCategoryQualifyings'])]
     private Collection $qualifyings;
 
+    /**
+     * @var Collection<int, Penalty>
+     */
+    #[ORM\OneToMany(targetEntity: Penalty::class, mappedBy: 'pilotRoundCategory')]
+    #[Groups(['pilotRoundCategoryPenalties'])]
+    private Collection $penalties;
+
     public function __construct()
     {
         $this->qualifyings = new ArrayCollection();
+        $this->penalties = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -185,6 +193,36 @@ class PilotRoundCategory
             // set the owning side to null (unless already changed)
             if ($qualifying->getPilotRoundCategory() === $this) {
                 $qualifying->setPilotRoundCategory(null);
+            }
+        }
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, Penalty>
+     */
+    public function getPenalties(): Collection
+    {
+        return $this->penalties;
+    }
+
+    public function addPenalty(Penalty $penalty): static
+    {
+        if (!$this->penalties->contains($penalty)) {
+            $this->penalties->add($penalty);
+            $penalty->setPilotRoundCategory($this);
+        }
+
+        return $this;
+    }
+
+    public function removePenalty(Penalty $penalty): static
+    {
+        if ($this->penalties->removeElement($penalty)) {
+            // set the owning side to null (unless already changed)
+            if ($penalty->getPilotRoundCategory() === $this) {
+                $penalty->setPilotRoundCategory(null);
             }
         }
 
