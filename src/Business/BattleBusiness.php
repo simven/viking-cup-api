@@ -52,11 +52,11 @@ readonly class BattleBusiness
         foreach ($battleVersus as $versus) {
             /** @var Pilot $pilot1 */
             $pilot1 = $qualifyingRanking[$versus->getPilotQualifPosition1() -1]['pilot'] ?? null;
-            $pilotRoundCategory1 = $pilot1?->getPilotRoundCategories()->filter(fn(PilotRoundCategory $pilotRoundCategory) => $pilotRoundCategory->getRound()->getId() === $round->getId() && $pilotRoundCategory->getCategory()->getId() === $category->getId())->first();
+            $pilotRoundCategory1 = $pilot1?->getPilotRoundCategories()->filter(fn(PilotRoundCategory $pilotRoundCategory) => $pilotRoundCategory->getRound()->getId() === $round->getId() && $pilotRoundCategory->getCategory()->getId() === $category->getId() && $pilotRoundCategory->isCompeting() === true && $pilotRoundCategory->isEngaged() === true)->first();
             $pilotRoundCategory1 = $pilotRoundCategory1 !== false ? $pilotRoundCategory1 : null;
 
             $pilot2 = $qualifyingRanking[$versus->getPilotQualifPosition2() -1]['pilot'] ?? null;
-            $pilotRoundCategory2 = $pilot2?->getPilotRoundCategories()->filter(fn(PilotRoundCategory $pilotRoundCategory) => $pilotRoundCategory->getRound()->getId() === $round->getId() && $pilotRoundCategory->getCategory()->getId() === $category->getId())->first();
+            $pilotRoundCategory2 = $pilot2?->getPilotRoundCategories()->filter(fn(PilotRoundCategory $pilotRoundCategory) => $pilotRoundCategory->getRound()->getId() === $round->getId() && $pilotRoundCategory->getCategory()->getId() === $category->getId() && $pilotRoundCategory->isCompeting() === true && $pilotRoundCategory->isEngaged() === true)->first();
             $pilotRoundCategory2 = $pilotRoundCategory2 !== false ? $pilotRoundCategory2 : null;
 
             if ($pilotRoundCategory1 !== null && $pilotRoundCategory2 !== null) {
