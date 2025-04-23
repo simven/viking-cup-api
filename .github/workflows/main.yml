@@ -13,6 +13,7 @@ jobs:
     - name: Synchroniser les pilotes depuis Billetweb
       run: |
         # 1. Auth - récupération du token
+        echo "BACKEND_USERNAME : ${{ secrets.BACKEND_USERNAME }}"
         TOKEN=$(curl -s -X POST https://bo.viking-cup.fr/api/login \
           -H "Content-Type: application/json" \
           -d '{"username": "${{ secrets.BACKEND_USERNAME }}", "password": "${{ secrets.BACKEND_PASSWORD }}"}' \
