@@ -89,10 +89,12 @@ class BilletwebBusiness
                             ->setCountry($billetwebTicket->getCustom()['Pays'] ?? null)
                             ->setNationality($billetwebTicket->getCustom()['Nationalité'] ?? null)
                             ->setFfsaLicensee(boolval($billetwebTicket->getCustom()['Etes-vous licencié FFSA ?'] ?? null));
+
                         if ($pilot->getCreatedAt() === null && $billetwebTicket->getCreationDate() !== null) {
                             $pilot->setCreatedAt($billetwebTicket->getCreationDate());
                         }
 
+                        echo 'Nouveau pilote : ' . $billetwebTicket->getPilotFirstName() . ' ' . $billetwebTicket->getPilotLastName() . PHP_EOL;
                         $this->em->persist($pilot);
                     }
 
