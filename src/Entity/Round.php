@@ -46,10 +46,17 @@ class Round
     #[Groups(['round'])]
     private ?\DateTimeInterface $toDate = null;
 
+    /**
+     * @var Collection<int, RoundCategory>
+     */
+    #[ORM\OneToMany(targetEntity: RoundCategory::class, mappedBy: 'round')]
+    private Collection $roundCategories;
+
     public function __construct()
     {
         $this->roundDetails = new ArrayCollection();
         $this->pilotRoundCategories = new ArrayCollection();
+        $this->roundCategories = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -161,6 +168,36 @@ class Round
     public function setToDate(?\DateTimeInterface $toDate): static
     {
         $this->toDate = $toDate;
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, RoundCategory>
+     */
+    public function getRoundCategories(): Collection
+    {
+        return $this->roundCategories;
+    }
+
+    public function addRoundCategory(RoundCategory $roundCategory): static
+    {
+        if (!$this->roundCategories->contains($roundCategory)) {
+            $this->roundCategories->add($roundCategory);
+            $roundCategory->setRound($this);
+        }
+
+        return $this;
+    }
+
+    public function removeRoundCategory(RoundCategory $roundCategory): static
+    {
+        if ($this->roundCategories->removeElement($roundCategory)) {
+            // set the owning side to null (unless already changed)
+            if ($roundCategory->getRound() === $this) {
+                $roundCategory->setRound(null);
+            }
+        }
 
         return $this;
     }

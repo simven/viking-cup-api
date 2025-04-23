@@ -30,9 +30,16 @@ class Category
     #[ORM\OneToOne(mappedBy: 'category', cascade: ['persist', 'remove'])]
     private ?PilotNumberCounter $pilotNumberCounter = null;
 
+    /**
+     * @var Collection<int, RoundCategory>
+     */
+    #[ORM\OneToMany(targetEntity: RoundCategory::class, mappedBy: 'category')]
+    private Collection $roundCategories;
+
     public function __construct()
     {
         $this->pilotRoundCategories = new ArrayCollection();
+        $this->roundCategories = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -100,6 +107,36 @@ class Category
         }
 
         $this->pilotNumberCounter = $pilotNumberCounter;
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, RoundCategory>
+     */
+    public function getRoundCategories(): Collection
+    {
+        return $this->roundCategories;
+    }
+
+    public function addRoundCategory(RoundCategory $roundCategory): static
+    {
+        if (!$this->roundCategories->contains($roundCategory)) {
+            $this->roundCategories->add($roundCategory);
+            $roundCategory->setCategory($this);
+        }
+
+        return $this;
+    }
+
+    public function removeRoundCategory(RoundCategory $roundCategory): static
+    {
+        if ($this->roundCategories->removeElement($roundCategory)) {
+            // set the owning side to null (unless already changed)
+            if ($roundCategory->getCategory() === $this) {
+                $roundCategory->setCategory(null);
+            }
+        }
 
         return $this;
     }
