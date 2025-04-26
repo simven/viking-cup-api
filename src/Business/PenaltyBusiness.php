@@ -18,14 +18,20 @@ readonly class PenaltyBusiness
     )
     {}
 
+    public function getPenalties(PilotRoundCategory $pilotRoundCategory): array
+    {
+        return $this->penaltyRepository->findBy(['pilotRoundCategory' => $pilotRoundCategory]);
+    }
+
     /**
      * @param PilotRoundCategory $pilotRoundCategory
-     * @param PenaltyDto[] $penalties
-     * @return void
+     * @param PenaltyDto[] $penaltiesDto
+     * @return array
      */
-    public function updatePenalties(PilotRoundCategory $pilotRoundCategory, array $penalties): void
+    public function updatePenalties(PilotRoundCategory $pilotRoundCategory, array $penaltiesDto): array
     {
-        foreach ($penalties as $penaltyDto) {
+        $penalties = [];
+        foreach ($penaltiesDto as $penaltyDto) {
             if ($penaltyDto->id === null) {
                 $penalty = new Penalty();
             } else {
@@ -45,8 +51,17 @@ readonly class PenaltyBusiness
                 ->setPenaltyReason($penaltyReason);
 
             $this->em->persist($penalty);
+            $penalties[] = $penalty;
         }
 
+        $this->em->flush();
+
+        return $penalties;
+    }
+
+    public function deletePenalty(Penalty $penalty): void
+    {
+        $this->em->remove($penalty);
         $this->em->flush();
     }
 }
