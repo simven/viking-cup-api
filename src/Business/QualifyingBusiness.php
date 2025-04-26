@@ -61,7 +61,7 @@ readonly class QualifyingBusiness
 
                 $firstQualifying = $pilotRoundCategory->getQualifyings()->first();
 
-                if ($firstQualifying === false || $firstQualifying->getQualifyingDetails()->first() === false) {
+                if($this->isValidQualif($firstQualifying) === false) {
                     continue;
                 }
 
@@ -265,4 +265,23 @@ readonly class QualifyingBusiness
         return $ranking;
     }
 
+    private function isValidQualif($qualif): bool
+    {
+        if ($qualif === false || $qualif->getQualifyingDetails()->first() === false) {
+            return false;
+        }
+
+        // if all of QualifyingDetails have points null, skip
+        $oneNotNull = false;
+        foreach ($qualif->getQualifyingDetails()->toArray() as $qualifDetail) {
+            if ($qualifDetail->getPoints() !== null) {
+                $oneNotNull = true;
+            }
+        }
+        if ($oneNotNull === false) {
+            return false;
+        }
+
+        return true;
+    }
 }
