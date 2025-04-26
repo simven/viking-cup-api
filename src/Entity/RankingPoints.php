@@ -2,16 +2,19 @@
 
 namespace App\Entity;
 
-use App\Repository\BattleRankingPointsRepository;
+use App\Repository\RankingPointsRepository;
 use Doctrine\ORM\Mapping as ORM;
 
-#[ORM\Entity(repositoryClass: BattleRankingPointsRepository::class)]
-class BattleRankingPoints
+#[ORM\Entity(repositoryClass: RankingPointsRepository::class)]
+class RankingPoints
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
     private ?int $id = null;
+
+    #[ORM\Column]
+    private ?string $entity = null;
 
     #[ORM\Column]
     private ?int $fromPosition = null;
@@ -25,6 +28,18 @@ class BattleRankingPoints
     public function getId(): ?int
     {
         return $this->id;
+    }
+
+    public function getEntity(): ?string
+    {
+        return $this->entity;
+    }
+
+    public function setEntity(string $entity): static
+    {
+        $this->entity = $entity;
+
+        return $this;
     }
 
     public function getFromPosition(): ?int

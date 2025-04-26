@@ -16,6 +16,6 @@ class DefaultController extends AbstractController
             return $this->redirectToRoute('admin_sponsor_index');
         }
 
-        return $this->redirectToRoute('login');
+        return $this->redirectToRoute('login_admin');
     }
 }

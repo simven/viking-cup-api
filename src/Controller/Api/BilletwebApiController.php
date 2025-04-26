@@ -10,8 +10,8 @@ use Symfony\Component\Routing\Attribute\Route;
 #[Route('/api/billetweb', name: 'api_billetweb')]
 class BilletwebApiController extends AbstractController
 {
-    #[Route('/sync/pilots', name: 'sync', methods: ['POST'])]
-    public function syncPilots(BilletwebBusiness $billetwebBusiness): Response
+    #[Route('/sync/tickets', name: 'sync', methods: ['POST'])]
+    public function syncTickets(BilletwebBusiness $billetwebBusiness): Response
     {
         $billetwebBusiness->syncEventAttendees();
 

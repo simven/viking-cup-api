@@ -8,6 +8,7 @@ use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Serializer\Attribute\Groups;
 
 #[ORM\Entity(repositoryClass: PilotRepository::class)]
 #[ORM\HasLifecycleCallbacks]
@@ -16,39 +17,51 @@ class Pilot
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups(['pilot'])]
     private ?int $id = null;
 
     #[ORM\Column(length: 255)]
+    #[Groups(['pilot'])]
     private ?string $firstName = null;
 
     #[ORM\Column(length: 255)]
+    #[Groups(['pilot'])]
     private ?string $lastName = null;
 
     #[ORM\Column(length: 255, nullable: true)]
+    #[Groups(['pilot'])]
     private ?string $email = null;
 
     #[ORM\Column(length: 255, nullable: true)]
+    #[Groups(['pilot'])]
     private ?string $phoneNumber = null;
 
     #[ORM\Column(length: 255, nullable: true)]
+    #[Groups(['pilot'])]
     private ?string $address = null;
 
     #[ORM\Column(length: 10, nullable: true)]
+    #[Groups(['pilot'])]
     private ?string $zipCode = null;
 
     #[ORM\Column(length: 255, nullable: true)]
+    #[Groups(['pilot'])]
     private ?string $city = null;
 
     #[ORM\Column(length: 5, nullable: true)]
+    #[Groups(['pilot'])]
     private ?string $country = null;
 
     #[ORM\Column(length: 255, nullable: true)]
+    #[Groups(['pilot'])]
     private ?string $nationality = null;
 
     #[ORM\Column(nullable: true)]
+    #[Groups(['pilot'])]
     private ?bool $ffsaLicensee = null;
 
     #[ORM\Column(length: 255, nullable: true)]
+    #[Groups(['pilot'])]
     private ?string $ffsaNumber = null;
 
     /**
@@ -58,14 +71,23 @@ class Pilot
     private Collection $pilotRoundCategories;
 
     #[ORM\Column(type: Types::DATETIME_MUTABLE)]
+    #[Groups(['pilot'])]
     private ?\DateTimeInterface $createdAt = null;
 
     #[ORM\Column(type: Types::DATETIME_MUTABLE)]
     private ?\DateTimeInterface $updatedAt = null;
 
+    /**
+     * @var Collection<int, PilotEvent>
+     */
+    #[ORM\OneToMany(targetEntity: PilotEvent::class, mappedBy: 'pilot', orphanRemoval: true)]
+    #[Groups(['pilotEvents'])]
+    private Collection $pilotEvents;
+
     public function __construct()
     {
         $this->pilotRoundCategories = new ArrayCollection();
+        $this->pilotEvents = new ArrayCollection();
     }
 
     #[ORM\PrePersist]
@@ -266,6 +288,36 @@ class Pilot
     public function setUpdatedAt(\DateTimeInterface $updatedAt): static
     {
         $this->updatedAt = $updatedAt;
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, PilotEvent>
+     */
+    public function getPilotEvents(): Collection
+    {
+        return $this->pilotEvents;
+    }
+
+    public function addPilotEvent(PilotEvent $pilotEvent): static
+    {
+        if (!$this->pilotEvents->contains($pilotEvent)) {
+            $this->pilotEvents->add($pilotEvent);
+            $pilotEvent->setPilot($this);
+        }
+
+        return $this;
+    }
+
+    public function removePilotEvent(PilotEvent $pilotEvent): static
+    {
+        if ($this->pilotEvents->removeElement($pilotEvent)) {
+            // set the owning side to null (unless already changed)
+            if ($pilotEvent->getPilot() === $this) {
+                $pilotEvent->setPilot(null);
+            }
+        }
 
         return $this;
     }

@@ -12,12 +12,21 @@ security:
         dev:
             pattern: ^/(_(profiler|wdt)|css|images|js)/
             security: false
+        api:
+            pattern: ^/api
+            stateless: true
+            provider: app_user_provider
+            json_login:
+                check_path: /api/login
+                success_handler: lexik_jwt_authentication.handler.authentication_success
+                failure_handler: lexik_jwt_authentication.handler.authentication_failure
+            jwt: ~
         main:
             lazy: true
             provider: app_user_provider
             form_login:
-                login_path: login
-                check_path: login
+                login_path: login_admin
+                check_path: login_admin
                 default_target_path: /admin/media
             logout:
                 path: logout
@@ -29,6 +38,19 @@ security:
     # Note: Only the *first* access control that matches will be used
     access_control:
         - { path: ^/admin, roles: ROLE_USER }
+        - { path: ^/api/token_check, roles: PUBLIC_ACCESS }
+        - { path: ^/api/medias, roles: PUBLIC_ACCESS, methods: [GET] }
+        - { path: ^/api/sponsors, roles: PUBLIC_ACCESS, methods: [GET] }
+        - { path: ^/api/events, roles: PUBLIC_ACCESS, methods: [GET] }
+        - { path: ^/api/rounds, roles: PUBLIC_ACCESS, methods: [GET] }
+        - { path: ^/api/roundCategories, roles: PUBLIC_ACCESS, methods: [GET] }
+        - { path: ^/api/categories, roles: PUBLIC_ACCESS, methods: [GET] }
+        - { path: ^/api/qualifying/ranking, roles: PUBLIC_ACCESS, methods: [GET] }
+        - { path: ^/api/battles/ranking, roles: PUBLIC_ACCESS, methods: [GET] }
+        - { path: ^/api/ranking/round, roles: PUBLIC_ACCESS, methods: [GET] }
+        - { path: ^/api/ranking/event, roles: PUBLIC_ACCESS, methods: [GET] }
+        - { path: ^/api, roles: IS_AUTHENTICATED_FULLY }
+
 
 when@test:
     security:

@@ -2,39 +2,39 @@
 
 namespace App\Repository;
 
-use App\Entity\BattleRankingPoints;
+use App\Entity\PenaltyReason;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
 /**
- * @extends ServiceEntityRepository<BattleRankingPoints>
+ * @extends ServiceEntityRepository<PenaltyReason>
  */
-class BattleRankingPointsRepository extends ServiceEntityRepository
+class PenaltyReasonRepository extends ServiceEntityRepository
 {
     public function __construct(ManagerRegistry $registry)
     {
-        parent::__construct($registry, BattleRankingPoints::class);
+        parent::__construct($registry, PenaltyReason::class);
     }
 
     //    /**
-    //     * @return BattleRankingPoints[] Returns an array of BattleRankingPoints objects
+    //     * @return PenaltyReason[] Returns an array of PenaltyReason objects
     //     */
     //    public function findByExampleField($value): array
     //    {
-    //        return $this->createQueryBuilder('b')
-    //            ->andWhere('b.exampleField = :val')
+    //        return $this->createQueryBuilder('p')
+    //            ->andWhere('p.exampleField = :val')
     //            ->setParameter('val', $value)
-    //            ->orderBy('b.id', 'ASC')
+    //            ->orderBy('p.id', 'ASC')
     //            ->setMaxResults(10)
     //            ->getQuery()
     //            ->getResult()
     //        ;
     //    }
 
-    //    public function findOneBySomeField($value): ?BattleRankingPoints
+    //    public function findOneBySomeField($value): ?PenaltyReason
     //    {
-    //        return $this->createQueryBuilder('b')
-    //            ->andWhere('b.exampleField = :val')
+    //        return $this->createQueryBuilder('p')
+    //            ->andWhere('p.exampleField = :val')
     //            ->setParameter('val', $value)
     //            ->getQuery()
     //            ->getOneOrNullResult()

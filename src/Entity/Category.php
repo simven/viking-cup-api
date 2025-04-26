@@ -6,6 +6,7 @@ use App\Repository\CategoryRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Serializer\Attribute\Groups;
 
 #[ORM\Entity(repositoryClass: CategoryRepository::class)]
 class Category
@@ -13,9 +14,11 @@ class Category
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups(['category'])]
     private ?int $id = null;
 
     #[ORM\Column(length: 255)]
+    #[Groups(['category'])]
     private ?string $name = null;
 
     /**
@@ -24,9 +27,19 @@ class Category
     #[ORM\OneToMany(targetEntity: PilotRoundCategory::class, mappedBy: 'category')]
     private Collection $pilotRoundCategories;
 
+    #[ORM\OneToOne(mappedBy: 'category', cascade: ['persist', 'remove'])]
+    private ?PilotNumberCounter $pilotNumberCounter = null;
+
+    /**
+     * @var Collection<int, RoundCategory>
+     */
+    #[ORM\OneToMany(targetEntity: RoundCategory::class, mappedBy: 'category')]
+    private Collection $roundCategories;
+
     public function __construct()
     {
         $this->pilotRoundCategories = new ArrayCollection();
+        $this->roundCategories = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -70,6 +83,58 @@ class Category
             // set the owning side to null (unless already changed)
             if ($pilotRoundCategory->getCategory() === $this) {
                 $pilotRoundCategory->setCategory(null);
+            }
+        }
+
+        return $this;
+    }
+
+    public function getPilotNumberCounter(): ?PilotNumberCounter
+    {
+        return $this->pilotNumberCounter;
+    }
+
+    public function setPilotNumberCounter(?PilotNumberCounter $pilotNumberCounter): static
+    {
+        // unset the owning side of the relation if necessary
+        if ($pilotNumberCounter === null && $this->pilotNumberCounter !== null) {
+            $this->pilotNumberCounter->setCategory(null);
+        }
+
+        // set the owning side of the relation if necessary
+        if ($pilotNumberCounter !== null && $pilotNumberCounter->getCategory() !== $this) {
+            $pilotNumberCounter->setCategory($this);
+        }
+
+        $this->pilotNumberCounter = $pilotNumberCounter;
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, RoundCategory>
+     */
+    public function getRoundCategories(): Collection
+    {
+        return $this->roundCategories;
+    }
+
+    public function addRoundCategory(RoundCategory $roundCategory): static
+    {
+        if (!$this->roundCategories->contains($roundCategory)) {
+            $this->roundCategories->add($roundCategory);
+            $roundCategory->setCategory($this);
+        }
+
+        return $this;
+    }
+
+    public function removeRoundCategory(RoundCategory $roundCategory): static
+    {
+        if ($this->roundCategories->removeElement($roundCategory)) {
+            // set the owning side to null (unless already changed)
+            if ($roundCategory->getCategory() === $this) {
+                $roundCategory->setCategory(null);
             }
         }
 

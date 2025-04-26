@@ -5,7 +5,9 @@ namespace App\Entity;
 use App\Repository\RoundRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
+use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Serializer\Attribute\Groups;
 
 #[ORM\Entity(repositoryClass: RoundRepository::class)]
 class Round
@@ -13,12 +15,15 @@ class Round
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups(['round'])]
     private ?int $id = null;
 
     #[ORM\Column(length: 255)]
+    #[Groups(['round'])]
     private ?string $name = null;
 
     #[ORM\ManyToOne(inversedBy: 'rounds')]
+    #[Groups(['roundEvent'])]
     private ?Event $event = null;
 
     /**
@@ -33,10 +38,25 @@ class Round
     #[ORM\OneToMany(targetEntity: PilotRoundCategory::class, mappedBy: 'round')]
     private Collection $pilotRoundCategories;
 
+    #[ORM\Column(type: Types::DATE_MUTABLE, nullable: true)]
+    #[Groups(['round'])]
+    private ?\DateTimeInterface $fromDate = null;
+
+    #[ORM\Column(type: Types::DATE_MUTABLE, nullable: true)]
+    #[Groups(['round'])]
+    private ?\DateTimeInterface $toDate = null;
+
+    /**
+     * @var Collection<int, RoundCategory>
+     */
+    #[ORM\OneToMany(targetEntity: RoundCategory::class, mappedBy: 'round')]
+    private Collection $roundCategories;
+
     public function __construct()
     {
         $this->roundDetails = new ArrayCollection();
         $this->pilotRoundCategories = new ArrayCollection();
+        $this->roundCategories = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -122,6 +142,60 @@ class Round
             // set the owning side to null (unless already changed)
             if ($pilotRoundCategory->getRound() === $this) {
                 $pilotRoundCategory->setRound(null);
+            }
+        }
+
+        return $this;
+    }
+
+    public function getFromDate(): ?\DateTimeInterface
+    {
+        return $this->fromDate;
+    }
+
+    public function setFromDate(?\DateTimeInterface $fromDate): static
+    {
+        $this->fromDate = $fromDate;
+
+        return $this;
+    }
+
+    public function getToDate(): ?\DateTimeInterface
+    {
+        return $this->toDate;
+    }
+
+    public function setToDate(?\DateTimeInterface $toDate): static
+    {
+        $this->toDate = $toDate;
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, RoundCategory>
+     */
+    public function getRoundCategories(): Collection
+    {
+        return $this->roundCategories;
+    }
+
+    public function addRoundCategory(RoundCategory $roundCategory): static
+    {
+        if (!$this->roundCategories->contains($roundCategory)) {
+            $this->roundCategories->add($roundCategory);
+            $roundCategory->setRound($this);
+        }
+
+        return $this;
+    }
+
+    public function removeRoundCategory(RoundCategory $roundCategory): static
+    {
+        if ($this->roundCategories->removeElement($roundCategory)) {
+            // set the owning side to null (unless already changed)
+            if ($roundCategory->getRound() === $this) {
+                $roundCategory->setRound(null);
             }
         }
 

@@ -6,6 +6,7 @@ use App\Repository\EventRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Serializer\Attribute\Groups;
 
 #[ORM\Entity(repositoryClass: EventRepository::class)]
 class Event
@@ -13,12 +14,15 @@ class Event
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups(['event'])]
     private ?int $id = null;
 
     #[ORM\Column(length: 255)]
+    #[Groups(['event'])]
     private ?string $name = null;
 
     #[ORM\Column]
+    #[Groups(['event'])]
     private ?int $year = null;
 
     /**
@@ -27,9 +31,16 @@ class Event
     #[ORM\OneToMany(targetEntity: Round::class, mappedBy: 'event')]
     private Collection $rounds;
 
+    /**
+     * @var Collection<int, PilotEvent>
+     */
+    #[ORM\OneToMany(targetEntity: PilotEvent::class, mappedBy: 'event', orphanRemoval: true)]
+    private Collection $pilotEvents;
+
     public function __construct()
     {
         $this->rounds = new ArrayCollection();
+        $this->pilotEvents = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -85,6 +96,36 @@ class Event
             // set the owning side to null (unless already changed)
             if ($round->getEvent() === $this) {
                 $round->setEvent(null);
+            }
+        }
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, PilotEvent>
+     */
+    public function getPilotEvents(): Collection
+    {
+        return $this->pilotEvents;
+    }
+
+    public function addPilotEvent(PilotEvent $pilotEvent): static
+    {
+        if (!$this->pilotEvents->contains($pilotEvent)) {
+            $this->pilotEvents->add($pilotEvent);
+            $pilotEvent->setEvent($this);
+        }
+
+        return $this;
+    }
+
+    public function removePilotEvent(PilotEvent $pilotEvent): static
+    {
+        if ($this->pilotEvents->removeElement($pilotEvent)) {
+            // set the owning side to null (unless already changed)
+            if ($pilotEvent->getEvent() === $this) {
+                $pilotEvent->setEvent(null);
             }
         }
 

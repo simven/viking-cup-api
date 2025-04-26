@@ -6,13 +6,17 @@ use App\Dto\BilletwebTicketDto;
 use App\Entity\BilletwebTicket;
 use App\Entity\Category;
 use App\Entity\Pilot;
+use App\Entity\PilotEvent;
 use App\Entity\PilotRoundCategory;
+use App\Entity\Qualifying;
 use App\Entity\Round;
 use App\Helper\ConfigHelper;
 use App\Repository\BilletwebTicketRepository;
 use App\Repository\CategoryRepository;
+use App\Repository\PilotEventRepository;
 use App\Repository\PilotRepository;
 use App\Repository\PilotRoundCategoryRepository;
+use App\Repository\QualifyingRepository;
 use App\Repository\RoundRepository;
 use App\Service\BilletwebService;
 use Doctrine\ORM\EntityManagerInterface;
@@ -31,6 +35,8 @@ class BilletwebBusiness
         private readonly CategoryRepository           $categoryRepository,
         private readonly PilotRepository              $pilotRepository,
         private readonly PilotRoundCategoryRepository $pilotRoundCategoryRepository,
+        private readonly PilotEventRepository         $pilotEventRepository,
+        private readonly QualifyingRepository         $qualifyingRepository,
         private readonly BilletwebService             $billetwebService,
         private readonly ConfigHelper                 $configHelper,
         private readonly EntityManagerInterface       $em,
@@ -83,11 +89,30 @@ class BilletwebBusiness
                             ->setCountry($billetwebTicket->getCustom()['Pays'] ?? null)
                             ->setNationality($billetwebTicket->getCustom()['Nationalité'] ?? null)
                             ->setFfsaLicensee(boolval($billetwebTicket->getCustom()['Etes-vous licencié FFSA ?'] ?? null));
+
                         if ($pilot->getCreatedAt() === null && $billetwebTicket->getCreationDate() !== null) {
                             $pilot->setCreatedAt($billetwebTicket->getCreationDate());
                         }
 
+                        echo 'Nouveau pilote : ' . $billetwebTicket->getPilotFirstName() . ' ' . $billetwebTicket->getPilotLastName() . PHP_EOL;
                         $this->em->persist($pilot);
+                    }
+
+                    $pilotEvent = $this->pilotEventRepository->findOneBy(['pilot' => $pilot, 'event' => $round->getEvent()]);
+                    if ($pilotEvent === null) {
+                        $pilotEvent = new PilotEvent();
+                        $pilotEvent->setPilot($pilot)
+                            ->setEvent($round->getEvent())
+                            ->setReceiveWindscreenBand(false);
+
+                        $pilotNumberCounter = $category->getPilotNumberCounter();
+                        $pilotNumber = $pilotNumberCounter->getPilotNumberCounter() + 1;
+                        $pilotNumberCounter->setPilotNumberCounter($pilotNumber);
+                        $this->em->persist($pilotNumberCounter);
+
+                        $pilotEvent->setPilotNumber($pilotNumber);
+
+                        $this->em->persist($pilotEvent);
                     }
 
                     // Create PilotRoundCategory Entity
@@ -154,6 +179,7 @@ class BilletwebBusiness
 
     private function createDoubleMountPilotRoundCategory(array $doubleMountingTickets): void
     {
+        $pilotAssociation = [];
         foreach ($doubleMountingTickets as $doubleMountingTicket) {
             $mainPilotName = $doubleMountingTicket['ticket']->getCustom()['Nom du pilote principal'] ?? null;
 
@@ -163,30 +189,64 @@ class BilletwebBusiness
             }
 
             if ($mainPilot->getId() !== $doubleMountingTicket['pilot']->getId()) {
-                $secondPilot = $doubleMountingTicket['pilot'];
-
                 $this->createPilotRoundCategory(
-                    $mainPilot,
+                    $doubleMountingTicket['pilot'],
                     $doubleMountingTicket['round'],
                     $doubleMountingTicket['category'],
                     $doubleMountingTicket['vehicle'],
-                    $secondPilot
+                    false
+                );
+
+                $pilotAssociation[$mainPilot->getId()] = $doubleMountingTicket['pilot'];
+            }
+        }
+
+        foreach ($doubleMountingTickets as $doubleMountingTicket) {
+            $mainPilotName = $doubleMountingTicket['ticket']->getCustom()['Nom du pilote principal'] ?? null;
+
+            $mainPilot = $this->pilotRepository->findByName($mainPilotName);
+            if ($mainPilot === null) {
+                continue;
+            }
+
+            if ($mainPilot->getId() === $doubleMountingTicket['pilot']->getId() && isset($pilotAssociation[$doubleMountingTicket['pilot']->getId()])) {
+                $this->createPilotRoundCategory(
+                    $doubleMountingTicket['pilot'],
+                    $doubleMountingTicket['round'],
+                    $doubleMountingTicket['category'],
+                    $doubleMountingTicket['vehicle'],
+                    true,
+                    $pilotAssociation[$doubleMountingTicket['pilot']->getId()]
                 );
             }
         }
+
     }
 
-    private function createPilotRoundCategory(Pilot $mainPilot, Round $round, Category $category, ?string $vehicle, ?Pilot $secondPilot = null): void
+    private function createPilotRoundCategory(Pilot $pilot, Round $round, Category $category, ?string $vehicle, bool $isMainPilot = true, ?Pilot $secondPilot = null): void
     {
-        $pilotRoundCategory = $this->pilotRoundCategoryRepository->findOneBy(['pilot' => $mainPilot, 'round' => $round, 'category' => $category]);
+        $pilotRoundCategory = $this->pilotRoundCategoryRepository->findOneBy(['pilot' => $pilot, 'round' => $round, 'category' => $category]);
         if ($pilotRoundCategory === null) {
             $pilotRoundCategory = new PilotRoundCategory();
-            $pilotRoundCategory->setPilot($mainPilot)
+            $pilotRoundCategory->setPilot($pilot)
                 ->setRound($round)
                 ->setCategory($category)->setVehicle($vehicle)
+                ->setMainPilot($isMainPilot)
                 ->setSecondPilot($secondPilot);
 
             $this->em->persist($pilotRoundCategory);
+        }
+
+        for ($i = 1; $i < 3; $i++) {
+            $qualifying = $this->qualifyingRepository->findOneBy(['pilotRoundCategory' => $pilotRoundCategory, 'passage' => $i]);
+            if ($qualifying === null) {
+                $qualifying = new Qualifying();
+                $qualifying->setPilotRoundCategory($pilotRoundCategory)
+                    ->setPassage($i)
+                    ->setIsValid(true);
+
+                $this->em->persist($qualifying);
+            }
         }
     }
 }
