@@ -8,6 +8,7 @@ use App\Entity\Pilot;
 use App\Entity\PilotRoundCategory;
 use App\Entity\Round;
 use App\Helper\RankingHelper;
+use App\Repository\PilotRoundCategoryRepository;
 use App\Repository\RankingPointsRepository;
 use App\Repository\BattleRepository;
 use App\Repository\BattleVersusRepository;
@@ -20,6 +21,7 @@ readonly class BattleBusiness
         private BattleVersusRepository  $battleVersusRepository,
         private BattleRepository        $battleRepository,
         private RankingPointsRepository $rankingPointsRepository,
+        private PilotRoundCategoryRepository $pilotRoundCategoryRepository,
         private QualifyingBusiness      $qualifyingBusiness,
         private RankingHelper           $rankingHelper,
         private EntityManagerInterface  $em
@@ -191,18 +193,19 @@ readonly class BattleBusiness
 
     public function getBattleRanking(Round $round, Category $category): array
     {
-        $battlesRanking = $this->battleRepository->getBattleRanking($round, $category);
-
-        $battlesRanking = array_map(fn($battle) => [
-            'pilot' => isset($battle[0]) ? $battle[0]->getPilot() : null,
-            'pilotEvent' => isset($battle[0]) ? $battle[0]->getPilot()->getPilotEvents()->filter(fn($pe) => $pe->getEvent()->getId() === $round->getEvent()->getId())->first() : null,
-            'round' => $round,
-            'category' => $category,
-        ], $battlesRanking);
-
         if ($round->getId() === 1) {
-            $battlesRanking = $this->overrideBattleRound1($battlesRanking, $category->getId());
+            $pilotRoundCategories = $this->pilotRoundCategoryRepository->findBy(['round' => $round, 'category' => $category]);
+            $battlesRanking = $this->overrideBattleRound1($pilotRoundCategories, $category->getId());
         } else {
+            $battlesRanking = $this->battleRepository->getBattleRanking($round, $category);
+
+            $battlesRanking = array_map(fn($battle) => [
+                'pilot' => isset($battle[0]) ? $battle[0]->getPilot() : null,
+                'pilotEvent' => isset($battle[0]) ? $battle[0]->getPilot()->getPilotEvents()->filter(fn($pe) => $pe->getEvent()->getId() === $round->getEvent()->getId())->first() : null,
+                'round' => $round,
+                'category' => $category,
+            ], $battlesRanking);
+
             $battleRankingPoints = $this->rankingPointsRepository->findBy(['entity' => 'battle']);
             foreach ($battlesRanking as $pos => &$battleRanking) {
                 $battleRanking['points'] = $this->rankingHelper->getPointsByPosition($pos + 1, $battleRankingPoints);
@@ -228,7 +231,7 @@ readonly class BattleBusiness
         $this->em->persist($battle);
     }
 
-    public function overrideBattleRound1(array $battleRanking, int $categoryId): array
+    public function overrideBattleRound1(array $pilotRoundCategories, int $categoryId): array
     {
         if ($categoryId === 1) {
             $overrideRanking = [
@@ -267,28 +270,35 @@ readonly class BattleBusiness
             ];
         }
 
+        $ranking = [];
         if (isset($overrideRanking)) {
-            foreach ($battleRanking as &$ranking) {
-                $pilotOverrideIndex = array_search($ranking['pilot']->getId(), array_column($overrideRanking, 'pilotId'));
+            /** @var PilotRoundCategory $pilotRoundCategory */
+            foreach ($pilotRoundCategories as $pilotRoundCategory) {
+                $pilotOverrideIndex = array_search($pilotRoundCategory->getPilot()->getId(), array_column($overrideRanking, 'pilotId'));
                 if ($pilotOverrideIndex === false) {
                     continue;
                 }
                 $pilotOverride = $overrideRanking[$pilotOverrideIndex];
 
-                $ranking['points'] = $pilotOverride['points'];
-                $ranking['pos'] = $pilotOverride['pos'];
+                $ranking[] = [
+                    'pilot' => $pilotRoundCategory->getPilot(),
+                    'pilotEvent' => $pilotRoundCategory->getPilot()->getPilotEvents()->filter(fn($pe) => $pe->getEvent()->getId() === $pilotRoundCategory->getRound()->getEvent()->getId())->first(),
+                    'round' => $pilotRoundCategory->getRound(),
+                    'category' => $pilotRoundCategory->getCategory(),
+                    'points' => $pilotOverride['points'],
+                    'pos' => $pilotOverride['pos']
+                ];
             }
-            unset($ranking); // pour éviter un bug potentiel de foreach + référence
 
             // Tri par position croissante
-            usort($battleRanking, fn($a, $b) => $a['pos'] <=> $b['pos']);
+            usort($ranking, fn($a, $b) => $a['pos'] <=> $b['pos']);
 
-            foreach ($battleRanking as &$ranking) {
-                unset($ranking['pos']);
+            foreach ($ranking as &$rank) {
+                unset($rank['pos']);
             }
-            unset($ranking); // sécurité PHP foreach
+            unset($rank); // sécurité PHP foreach
         }
 
-        return $battleRanking;
+        return $ranking;
     }
 }

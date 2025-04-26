@@ -44,88 +44,89 @@ readonly class QualifyingBusiness
     public function getQualifyingRanking(Round $round, Category $category): array
     {
         $pilotRoundCategories = $this->pilotRoundCategoryRepository->findBy(['round' => $round, 'category' => $category]);
-        $rankingPoints = $this->rankingPointsRepository->findBy(['entity' => 'qualifying']);
-        $criteriaList = $this->qualifyingCriteriaRepository->findBy([], ['priority' => 'ASC']);
-        $groupedCriteriaList = $this->groupedCriteriaList($criteriaList);
 
-        $ranking = [];
-        /** @var PilotRoundCategory $pilotRoundCategory */
-        foreach ($pilotRoundCategories as $pilotRoundCategory) {
-            if ($pilotRoundCategory->isEngaged() === false) {
-                continue;
-            }
-
-            $firstQualifying = $pilotRoundCategory->getQualifyings()->first();
-
-            if ($firstQualifying === false) {
-                continue;
-            }
-
-            $passagePoints = [];
-            $maxPilotPoints = $this->getQualifPassagePoints($firstQualifying);
-            foreach ($pilotRoundCategory->getQualifyings() as $qualifying) {
-                $qualifyingPoints = $this->getQualifPassagePoints($qualifying);
-                $passagePoints[$qualifying->getPassage()] = $qualifyingPoints;
-                if ($qualifyingPoints > $maxPilotPoints) {
-                    $maxPilotPoints = $qualifyingPoints;
-                }
-            }
-
-            $pilotEvent = $pilotRoundCategory->getPilot()->getPilotEvents()->filter(fn($pe) => $pe->getEvent()->getId() === $round->getEvent()->getId())->first();
-
-            $ranking[] = [
-                'pilot' => $pilotRoundCategory->getPilot(),
-                'pilotEvent' => !$pilotEvent ? null : $pilotEvent,
-                'round' => $round,
-                'category' => $category,
-                'passagePoints' => $passagePoints,
-                'bestPassagePoints' => $maxPilotPoints,
-                'qualifs' => $pilotRoundCategory->getQualifyings()->toArray()
-            ];
-        }
-
-        usort($ranking, function ($a, $b) use ($groupedCriteriaList) {
-            // comparaison meilleurs passages
-            if ($b['bestPassagePoints'] !== $a['bestPassagePoints']) {
-                return $b['bestPassagePoints'] - $a['bestPassagePoints'];
-            }
-
-            // comparaison de la somme des points de passage
-            $sumPassagePointsB = array_sum($b['passagePoints']);
-            $sumPassagePointsA = array_sum($a['passagePoints']);
-            if ($sumPassagePointsB !== $sumPassagePointsA) {
-                return $sumPassagePointsB - $sumPassagePointsA;
-            }
-
-            // comparaison du passage où le pilote a eu le plus de points
-            $bestPassageB = array_search($b['bestPassagePoints'], $b['passagePoints']);
-            $bestPassageA = array_search($a['bestPassagePoints'], $a['passagePoints']);
-            if ($bestPassageA - $bestPassageB) {
-                return $bestPassageA - $bestPassageB;
-            }
-
-            // comparaison des points par critère de qualification
-            $scoresA = $this->calculateQualifsCriteriaScores($a['qualifs'], $groupedCriteriaList);
-            $scoresB = $this->calculateQualifsCriteriaScores($b['qualifs'], $groupedCriteriaList);
-            foreach ($scoresA as $priority => $groupA) {
-                $groupB = $scoresB[$priority] ?? ['totalPoints' => 0];
-
-                if ($groupB['totalPoints'] !== $groupA['totalPoints']) {
-                    return $groupB['totalPoints'] - $groupA['totalPoints'];
-                }
-            }
-
-            return 0; // égalité parfaite
-        });
-
-        foreach ($ranking as $pos => &$rank) {
-            $rank['points'] = $this->rankingHelper->getPointsByPosition($pos + 1, $rankingPoints);
-            unset($rank['passagePoints']);
-            unset($rank['qualifs']);
-        }
-        
         if ($round->getId() === 1) {
-            $ranking = $this->overrideQualifRound1($ranking, $category->getId());
+            $ranking = $this->overrideQualifRound1($pilotRoundCategories, $category->getId());
+        } else {
+            $rankingPoints = $this->rankingPointsRepository->findBy(['entity' => 'qualifying']);
+            $criteriaList = $this->qualifyingCriteriaRepository->findBy([], ['priority' => 'ASC']);
+            $groupedCriteriaList = $this->groupedCriteriaList($criteriaList);
+
+            $ranking = [];
+            /** @var PilotRoundCategory $pilotRoundCategory */
+            foreach ($pilotRoundCategories as $pilotRoundCategory) {
+                if ($pilotRoundCategory->isEngaged() === false) {
+                    continue;
+                }
+
+                $firstQualifying = $pilotRoundCategory->getQualifyings()->first();
+
+                if ($firstQualifying === false || $firstQualifying->getQualifyingDetails()->first() === false) {
+                    continue;
+                }
+
+                $passagePoints = [];
+                $maxPilotPoints = $this->getQualifPassagePoints($firstQualifying);
+                foreach ($pilotRoundCategory->getQualifyings() as $qualifying) {
+                    $qualifyingPoints = $this->getQualifPassagePoints($qualifying);
+                    $passagePoints[$qualifying->getPassage()] = $qualifyingPoints;
+                    if ($qualifyingPoints > $maxPilotPoints) {
+                        $maxPilotPoints = $qualifyingPoints;
+                    }
+                }
+
+                $pilotEvent = $pilotRoundCategory->getPilot()->getPilotEvents()->filter(fn($pe) => $pe->getEvent()->getId() === $round->getEvent()->getId())->first();
+
+                $ranking[] = [
+                    'pilot' => $pilotRoundCategory->getPilot(),
+                    'pilotEvent' => !$pilotEvent ? null : $pilotEvent,
+                    'round' => $round,
+                    'category' => $category,
+                    'passagePoints' => $passagePoints,
+                    'bestPassagePoints' => $maxPilotPoints,
+                    'qualifs' => $pilotRoundCategory->getQualifyings()->toArray()
+                ];
+            }
+
+            usort($ranking, function ($a, $b) use ($groupedCriteriaList) {
+                // comparaison meilleurs passages
+                if ($b['bestPassagePoints'] !== $a['bestPassagePoints']) {
+                    return $b['bestPassagePoints'] - $a['bestPassagePoints'];
+                }
+
+                // comparaison de la somme des points de passage
+                $sumPassagePointsB = array_sum($b['passagePoints']);
+                $sumPassagePointsA = array_sum($a['passagePoints']);
+                if ($sumPassagePointsB !== $sumPassagePointsA) {
+                    return $sumPassagePointsB - $sumPassagePointsA;
+                }
+
+                // comparaison du passage où le pilote a eu le plus de points
+                $bestPassageB = array_search($b['bestPassagePoints'], $b['passagePoints']);
+                $bestPassageA = array_search($a['bestPassagePoints'], $a['passagePoints']);
+                if ($bestPassageA - $bestPassageB) {
+                    return $bestPassageA - $bestPassageB;
+                }
+
+                // comparaison des points par critère de qualification
+                $scoresA = $this->calculateQualifsCriteriaScores($a['qualifs'], $groupedCriteriaList);
+                $scoresB = $this->calculateQualifsCriteriaScores($b['qualifs'], $groupedCriteriaList);
+                foreach ($scoresA as $priority => $groupA) {
+                    $groupB = $scoresB[$priority] ?? ['totalPoints' => 0];
+
+                    if ($groupB['totalPoints'] !== $groupA['totalPoints']) {
+                        return $groupB['totalPoints'] - $groupA['totalPoints'];
+                    }
+                }
+
+                return 0; // égalité parfaite
+            });
+
+            foreach ($ranking as $pos => &$rank) {
+                $rank['points'] = $this->rankingHelper->getPointsByPosition($pos + 1, $rankingPoints);
+                unset($rank['passagePoints']);
+                unset($rank['qualifs']);
+            }
         }
 
         return $ranking;
@@ -186,7 +187,7 @@ readonly class QualifyingBusiness
         return $points;
     }
 
-    public function overrideQualifRound1(array $qualifRanking, int $categoryId): array
+    public function overrideQualifRound1(array $pilotRoundCategories, int $categoryId): array
     {
         if ($categoryId === 1) {
             $overrideRanking = [
@@ -230,30 +231,38 @@ readonly class QualifyingBusiness
             ];
         }
 
+        $ranking = [];
         if (isset($overrideRanking)) {
-            foreach ($qualifRanking as &$ranking) {
-                $pilotOverrideIndex = array_search($ranking['pilot']->getId(), array_column($overrideRanking, 'pilotId'));
+            /** @var PilotRoundCategory $pilotRoundCategory */
+            foreach ($pilotRoundCategories as $pilotRoundCategory) {
+                $pilotOverrideIndex = array_search($pilotRoundCategory->getPilot()->getId(), array_column($overrideRanking, 'pilotId'));
                 if ($pilotOverrideIndex === false) {
                     continue;
                 }
                 $pilotOverride = $overrideRanking[$pilotOverrideIndex];
 
-                unset($ranking['bestPassagePoints']);
-                $ranking['points'] = $pilotOverride['points'];
-                $ranking['pos'] = $pilotOverride['pos'];
+                $pilotEvent = $pilotRoundCategory->getPilot()->getPilotEvents()->filter(fn($pe) => $pe->getEvent()->getId() === $pilotRoundCategory->getRound()->getEvent()->getId())->first();
+
+                $ranking[] = [
+                    'pilot' => $pilotRoundCategory->getPilot(),
+                    'pilotEvent' => !$pilotEvent ? null : $pilotEvent,
+                    'round' => $pilotRoundCategory->getRound(),
+                    'category' => $pilotRoundCategory->getCategory(),
+                    'points' => $pilotOverride['points'],
+                    'pos' => $pilotOverride['pos']
+                ];
             }
-            unset($ranking); // sécurité PHP foreach
 
             // Tri par position croissante
-            usort($qualifRanking, fn($a, $b) => ($a['pos'] ?? PHP_INT_MAX) <=> ($b['pos'] ?? PHP_INT_MAX));
+            usort($ranking, fn($a, $b) => ($a['pos'] ?? PHP_INT_MAX) <=> ($b['pos'] ?? PHP_INT_MAX));
 
-            foreach ($qualifRanking as &$ranking) {
-                unset($ranking['pos']);
+            foreach ($ranking as &$rank) {
+                unset($rank['pos']);
             }
-            unset($ranking); // sécurité PHP foreach
+            unset($rank); // sécurité PHP foreach
         }
 
-        return $qualifRanking;
+        return $ranking;
     }
 
 }
