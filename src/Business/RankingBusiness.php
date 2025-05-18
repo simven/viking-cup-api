@@ -10,7 +10,8 @@ readonly class RankingBusiness
 {
     public function __construct(
         private QualifyingBusiness $qualifyingBusiness,
-        private BattleBusiness $battleBusiness
+        private BattleBusiness $battleBusiness,
+        private RoundCategoryBusiness $roundCategoryBusiness
     )
     {}
 
@@ -28,7 +29,16 @@ readonly class RankingBusiness
         // sort by total points
         usort($roundRanking, fn($a, $b) => $b['points'] <=> $a['points']);
 
-        return $roundRanking;
+        $roundRanking = array_map(fn($rank, $index) => [
+            ...$rank,
+            'position' => $index + 1
+        ], $roundRanking, array_keys($roundRanking));
+
+        if (!$this->roundCategoryBusiness->displayTop($category, $round)) {
+            $roundRanking = array_filter($roundRanking, fn($rank) => $rank['position'] > 5);
+        }
+
+        return array_values($roundRanking);
     }
 
     public function getEventRanking(Event $event, Category $category): array
@@ -59,10 +69,20 @@ readonly class RankingBusiness
         // sort by total points
         usort($eventRanking, fn($a, $b) => $b['points'] <=> $a['points']);
 
-        return $eventRanking;
+        $eventRanking = array_map(fn($rank, $index) => [
+            ...$rank,
+            'position' => $index + 1
+        ], $eventRanking, array_keys($eventRanking));
+
+        if (!$this->roundCategoryBusiness->displayTop($category, null, $event)) {
+            $eventRanking = array_filter($eventRanking, fn($rank) => $rank['position'] > 5);
+        }
+
+        return array_values($eventRanking);
     }
 
-    private function sumRoundRankingPoints(array $qualifyingRanking, array $battleRanking): array {
+    private function sumRoundRankingPoints(array $qualifyingRanking, array $battleRanking): array
+    {
         $rankingMerged = array_merge($qualifyingRanking, $battleRanking);
 
         $grouped = array_reduce($rankingMerged, function ($carry, $entry) {
@@ -82,7 +102,7 @@ readonly class RankingBusiness
         return array_values($grouped);
     }
 
-    private function subtractPenalties($roundRanking)
+    private function subtractPenalties(array $roundRanking): array
     {
         foreach ($roundRanking as &$rank) {
             $pilotRoundCategory = $rank['pilot']->getPilotRoundCategories()->filter(fn($pilotRoundCategory) => $pilotRoundCategory->getCategory()->getId() === $rank['category']->getId() && $pilotRoundCategory->getRound()->getId() === $rank['round']->getId())->first();
