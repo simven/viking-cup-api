@@ -106,6 +106,9 @@ readonly class BattleBusiness
             throw new Exception('Category id is invalid');
         }
 
+        // don't keep qualifiers with point 0 as the best passage
+        $battleQualifiers = array_filter($battleQualifiers, fn($item) => isset($item['bestPassagePoints']) && $item['bestPassagePoints'] > 0);
+
         $lastQualif = end($battleQualifiers);
         $lastQualifPoints = $lastQualif['bestPassagePoints'] ?? 0;
 
