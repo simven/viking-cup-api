@@ -12,6 +12,7 @@ use App\Repository\PilotRoundCategoryRepository;
 use App\Repository\RankingPointsRepository;
 use App\Repository\BattleRepository;
 use App\Repository\BattleVersusRepository;
+use App\Repository\RoundCategoryRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Exception;
 
@@ -22,7 +23,9 @@ readonly class BattleBusiness
         private BattleRepository        $battleRepository,
         private RankingPointsRepository $rankingPointsRepository,
         private PilotRoundCategoryRepository $pilotRoundCategoryRepository,
+        private RoundCategoryRepository $roundCategoryRepository,
         private QualifyingBusiness      $qualifyingBusiness,
+        private RoundCategoryBusiness   $roundCategoryBusiness,
         private RankingHelper           $rankingHelper,
         private EntityManagerInterface  $em
     )
@@ -202,16 +205,41 @@ readonly class BattleBusiness
         } else {
             $battlesRanking = $this->battleRepository->getBattleRanking($round, $category);
 
-            $battlesRanking = array_map(fn($battle) => [
+            // sort by wins DESC, last_defeat_passage 0 first else last_defeat_passage DESC
+            usort($battlesRanking, function ($a, $b) {
+                if ($a['wins'] === $b['wins']) {
+                    if ($a['last_defeat_passage'] === 0 && $b['last_defeat_passage'] !== 0) {
+                        return -1;
+                    } elseif ($a['last_defeat_passage'] !== 0 && $b['last_defeat_passage'] === 0) {
+                        return 1;
+                    } else {
+                        return $b['last_defeat_passage'] <=> $a['last_defeat_passage'];
+                    }
+                }
+
+                return $b['wins'] <=> $a['wins'];
+            });
+
+            if (!$this->isBattleFinished($round, $category)) {
+                $battlesRanking = array_filter($battlesRanking, fn($battle) => $battle['last_defeat_passage'] !== 0);
+            }
+
+            // On mappe pour enrichir avec les infos utiles à l’affichage
+            $battlesRanking = array_map(fn($battle, $index) => [
                 'pilot' => isset($battle[0]) ? $battle[0]->getPilot() : null,
                 'pilotEvent' => isset($battle[0]) ? $battle[0]->getPilot()->getPilotEvents()->filter(fn($pe) => $pe->getEvent()->getId() === $round->getEvent()->getId())->first() : null,
                 'round' => $round,
                 'category' => $category,
-            ], $battlesRanking);
+                'position' => $index + 1
+            ], $battlesRanking, array_keys($battlesRanking));
+
+            if (!$this->roundCategoryBusiness->displayTop($category, $round)) {
+                $battlesRanking = array_filter($battlesRanking, fn($battle) => $battle['position'] > 5);
+            }
 
             $battleRankingPoints = $this->rankingPointsRepository->findBy(['entity' => 'battle']);
-            foreach ($battlesRanking as $pos => &$battleRanking) {
-                $battleRanking['points'] = $this->rankingHelper->getPointsByPosition($pos + 1, $battleRankingPoints);
+            foreach ($battlesRanking as &$battleRanking) {
+                $battleRanking['points'] = $this->rankingHelper->getPointsByPosition($battleRanking['position'], $battleRankingPoints);
             }
         }
 
@@ -234,42 +262,60 @@ readonly class BattleBusiness
         $this->em->persist($battle);
     }
 
+    private function isBattleFinished(Round $round, Category $category): bool
+    {
+        $maxPassage = $this->battleRepository->getMaxPassage($round, $category);
+        if ($maxPassage < 6) {
+            return false;
+        }
+
+        $battles = $this->battleRepository->getBattleVersus($round, $category);
+
+        foreach ($battles as $battle) {
+            if ($battle->getWinner() === null) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     public function overrideBattleRound1(array $pilotRoundCategories, int $categoryId): array
     {
         if ($categoryId === 1) {
             $overrideRanking = [
-                ['pilotId' => 13, 'pos' => 0, 'points' => 200], // DE CARVALHO
-                ['pilotId' => 15, 'pos' => 1, 'points' => 150], // VICENTE
-                ['pilotId' => 63, 'pos' => 2, 'points' => 100], // KARROUACHE
-                ['pilotId' => 50, 'pos' => 3, 'points' => 50], // BREANT
-                ['pilotId' => 57, 'pos' => 4, 'points' => 30], // DA COSTA
-                ['pilotId' => 24, 'pos' => 5, 'points' => 30], // RAKOTONDRATRIMO
-                ['pilotId' => 10, 'pos' => 6, 'points' => 30], // FELIX
-                ['pilotId' => 54, 'pos' => 5, 'points' => 30], // FAVIER
-                ['pilotId' => 60, 'pos' => 6, 'points' => 20], // LEGROS
-                ['pilotId' => 37, 'pos' => 7, 'points' => 20], // DANGEON
-                ['pilotId' => 33, 'pos' => 8, 'points' => 20], // DELAUNAY
-                ['pilotId' => 53, 'pos' => 9, 'points' => 20], // BONNARD
-                ['pilotId' => 62, 'pos' => 10, 'points' => 20], // FAUVEAU
-                ['pilotId' => 61, 'pos' => 11, 'points' => 20], // LAMBERT
-                ['pilotId' => 9, 'pos' => 12, 'points' => 20] // GLOAGUEN
+                ['pilotId' => 13, 'position' => 0, 'points' => 200], // DE CARVALHO
+                ['pilotId' => 15, 'position' => 1, 'points' => 150], // VICENTE
+                ['pilotId' => 63, 'position' => 2, 'points' => 100], // KARROUACHE
+                ['pilotId' => 50, 'position' => 3, 'points' => 50], // BREANT
+                ['pilotId' => 57, 'position' => 4, 'points' => 30], // DA COSTA
+                ['pilotId' => 24, 'position' => 5, 'points' => 30], // RAKOTONDRATRIMO
+                ['pilotId' => 10, 'position' => 6, 'points' => 30], // FELIX
+                ['pilotId' => 54, 'position' => 5, 'points' => 30], // FAVIER
+                ['pilotId' => 60, 'position' => 6, 'points' => 20], // LEGROS
+                ['pilotId' => 37, 'position' => 7, 'points' => 20], // DANGEON
+                ['pilotId' => 33, 'position' => 8, 'points' => 20], // DELAUNAY
+                ['pilotId' => 53, 'position' => 9, 'points' => 20], // BONNARD
+                ['pilotId' => 62, 'position' => 10, 'points' => 20], // FAUVEAU
+                ['pilotId' => 61, 'position' => 11, 'points' => 20], // LAMBERT
+                ['pilotId' => 9, 'position' => 12, 'points' => 20] // GLOAGUEN
             ];
         } elseif ($categoryId === 2) {
             $overrideRanking = [
-                ['pilotId' => 48, 'pos' => 0, 'points' => 200], // VAN WEYMEERSCH
-                ['pilotId' => 55, 'pos' => 1, 'points' => 150], // DUCRET
-                ['pilotId' => 59, 'pos' => 2, 'points' => 100], // TROSSET
-                ['pilotId' => 58, 'pos' => 3, 'points' => 50], // LA RUSSA
-                ['pilotId' => 36, 'pos' => 4, 'points' => 30], // THOUIN
-                ['pilotId' => 22, 'pos' => 5, 'points' => 30], // SERABIAN
-                ['pilotId' => 30, 'pos' => 6, 'points' => 30], // MOREIRA
-                ['pilotId' => 23, 'pos' => 7, 'points' => 30], // GUY
-                ['pilotId' => 3, 'pos' => 8, 'points' => 20], // GENIEYS
-                ['pilotId' => 41, 'pos' => 9, 'points' => 20], // MARIEN
-                ['pilotId' => 16, 'pos' => 10, 'points' => 20], // MAON
-                ['pilotId' => 11, 'pos' => 11, 'points' => 20], // PREVOST
-                ['pilotId' => 25, 'pos' => 12, 'points' => 20], // PIOGE
-                ['pilotId' => 1, 'pos' => 13, 'points' => 20], // SANTOS
+                ['pilotId' => 48, 'position' => 0, 'points' => 200], // VAN WEYMEERSCH
+                ['pilotId' => 55, 'position' => 1, 'points' => 150], // DUCRET
+                ['pilotId' => 59, 'position' => 2, 'points' => 100], // TROSSET
+                ['pilotId' => 58, 'position' => 3, 'points' => 50], // LA RUSSA
+                ['pilotId' => 36, 'position' => 4, 'points' => 30], // THOUIN
+                ['pilotId' => 22, 'position' => 5, 'points' => 30], // SERABIAN
+                ['pilotId' => 30, 'position' => 6, 'points' => 30], // MOREIRA
+                ['pilotId' => 23, 'position' => 7, 'points' => 30], // GUY
+                ['pilotId' => 3, 'position' => 8, 'points' => 20], // GENIEYS
+                ['pilotId' => 41, 'position' => 9, 'points' => 20], // MARIEN
+                ['pilotId' => 16, 'position' => 10, 'points' => 20], // MAON
+                ['pilotId' => 11, 'position' => 11, 'points' => 20], // PREVOST
+                ['pilotId' => 25, 'position' => 12, 'points' => 20], // PIOGE
+                ['pilotId' => 1, 'position' => 13, 'points' => 20], // SANTOS
             ];
         }
 
@@ -289,17 +335,12 @@ readonly class BattleBusiness
                     'round' => $pilotRoundCategory->getRound(),
                     'category' => $pilotRoundCategory->getCategory(),
                     'points' => $pilotOverride['points'],
-                    'pos' => $pilotOverride['pos']
+                    'position' => $pilotOverride['position']
                 ];
             }
 
             // Tri par position croissante
-            usort($ranking, fn($a, $b) => $a['pos'] <=> $b['pos']);
-
-            foreach ($ranking as &$rank) {
-                unset($rank['pos']);
-            }
-            unset($rank); // sécurité PHP foreach
+            usort($ranking, fn($a, $b) => $a['position'] <=> $b['position']);
         }
 
         return $ranking;

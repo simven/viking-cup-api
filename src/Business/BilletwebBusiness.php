@@ -232,7 +232,9 @@ class BilletwebBusiness
                 ->setRound($round)
                 ->setCategory($category)->setVehicle($vehicle)
                 ->setMainPilot($isMainPilot)
-                ->setSecondPilot($secondPilot);
+                ->setSecondPilot($secondPilot)
+                ->setIsEngaged(true)
+                ->setIsCompeting(true);
 
             $this->em->persist($pilotRoundCategory);
         }

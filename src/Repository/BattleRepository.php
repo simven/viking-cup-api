@@ -72,6 +72,23 @@ class BattleRepository extends ServiceEntityRepository
             ->getResult();
     }
 
+    public function getMaxPassage(Round $round, Category $category)
+    {
+        return $this->createQueryBuilder('b')
+            ->select('MAX(b.passage)')
+            ->leftJoin('b.pilotRoundCategory1', 'prc1')
+            ->leftJoin('b.pilotRoundCategory2', 'prc2')
+            ->andWhere('prc1 IS NULL OR (prc1.round = :round AND prc1.isEngaged = :isEngaged)')
+            ->andWhere('prc1 IS NULL OR (prc1.category = :category AND prc1.isEngaged = :isEngaged)')
+            ->andWhere('prc2 IS NULL OR (prc2.round = :round AND prc2.isEngaged = :isEngaged)')
+            ->andWhere('prc2 IS NULL OR (prc2.category = :category AND prc2.isEngaged = :isEngaged)')
+            ->setParameter('round', $round)
+            ->setParameter('category', $category)
+            ->setParameter('isEngaged', true)
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
+
     //    /**
     //     * @return Battle[] Returns an array of Battle objects
     //     */
