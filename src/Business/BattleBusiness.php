@@ -341,11 +341,6 @@ readonly class BattleBusiness
 
             // Tri par position croissante
             usort($ranking, fn($a, $b) => $a['position'] <=> $b['position']);
-
-            foreach ($ranking as &$rank) {
-                unset($rank['position']);
-            }
-            unset($rank); // sécurité PHP foreach
         }
 
         return $ranking;

@@ -86,6 +86,7 @@ readonly class RankingBusiness
         $rankingMerged = array_merge($qualifyingRanking, $battleRanking);
 
         $grouped = array_reduce($rankingMerged, function ($carry, $entry) {
+            unset($entry['bestPassagePoints']);
             $pilotId = $entry['pilot']->getId();
             $points = $entry['points'];
 

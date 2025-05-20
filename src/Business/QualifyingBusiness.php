@@ -256,11 +256,6 @@ readonly class QualifyingBusiness
 
             // Tri par position croissante
             usort($ranking, fn($a, $b) => ($a['position'] ?? PHP_INT_MAX) <=> ($b['position'] ?? PHP_INT_MAX));
-
-            foreach ($ranking as &$rank) {
-                unset($rank['position']);
-            }
-            unset($rank); // sécurité PHP foreach
         }
 
         return $ranking;

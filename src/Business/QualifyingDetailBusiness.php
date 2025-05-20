@@ -8,17 +8,25 @@ use App\Entity\QualifyingDetail;
 use App\Repository\QualifyingCriteriaRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Exception;
+use Symfony\Component\Lock\LockFactory;
 
 readonly class QualifyingDetailBusiness
 {
     public function __construct(
         private QualifyingCriteriaRepository $qualifyingCriteriaRepository,
+        private LockFactory $lockFactory,
         private EntityManagerInterface $em
     )
     {}
 
     public function updateQualifyingDetail(Qualifying $qualifying, QualifDetailDto $qualifDetailDto): void
     {
+        $lock = $this->lockFactory->createLock('update-qualifying-detail');
+
+        while (!$lock->acquire()) {
+            sleep(1);
+        }
+
         $qualifyingDetail = $qualifying->getQualifyingDetails()->filter(fn($qualifDetail) => $qualifDetail->getQualifyingCriteria()->getId() === $qualifDetailDto->qualifyingCriteriaId)->first();
 
         if ($qualifyingDetail === false) {
@@ -37,5 +45,7 @@ readonly class QualifyingDetailBusiness
 
         $this->em->persist($qualifyingDetail);
         $this->em->flush();
+
+        $lock->release();
     }
 }
