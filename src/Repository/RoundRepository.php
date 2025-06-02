@@ -16,6 +16,16 @@ class RoundRepository extends ServiceEntityRepository
         parent::__construct($registry, Round::class);
     }
 
+    public function findRoundFromDate(\DateTimeInterface $dateTime): ?Round
+    {
+        return $this->createQueryBuilder('r')
+            ->andWhere('r.toDate >= :dateTime')
+            ->setParameter('dateTime', $dateTime)
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
+    }
+
     //    /**
     //     * @return Round[] Returns an array of Round objects
     //     */

@@ -3,7 +3,8 @@
 namespace App\Entity;
 
 use App\Repository\LinkRepository;
-use Doctrine\DBAL\Types\Types;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Serializer\Attribute\Groups;
 
@@ -16,16 +17,31 @@ class Link
     #[Groups(['sponsor:read'])]
     private ?int $id = null;
 
-    #[ORM\Column(length: 30)]
-    #[Groups(['sponsor:read'])]
-    private ?string $icon = null;
-
     #[ORM\Column(length: 255)]
     #[Groups(['sponsor:read'])]
     private ?string $url = null;
 
     #[ORM\ManyToOne(inversedBy: 'links')]
-    private ?Sponsor $sponsor = null;
+    #[Groups(['sponsor:read'])]
+    private ?LinkType $linkType = null;
+
+    /**
+     * @var Collection<int, Sponsor>
+     */
+    #[ORM\ManyToMany(targetEntity: Sponsor::class, mappedBy: 'links')]
+    private Collection $sponsors;
+
+    /**
+     * @var Collection<int, Person>
+     */
+    #[ORM\ManyToMany(targetEntity: Person::class, mappedBy: 'links')]
+    private Collection $people;
+
+    public function __construct()
+    {
+        $this->sponsors = new ArrayCollection();
+        $this->people = new ArrayCollection();
+    }
 
     public function getId(): ?int
     {
@@ -56,14 +72,68 @@ class Link
         return $this;
     }
 
-    public function getSponsor(): ?Sponsor
+    public function getLinkType(): ?LinkType
     {
-        return $this->sponsor;
+        return $this->linkType;
     }
 
-    public function setSponsor(?Sponsor $sponsor): static
+    public function setLinkType(?LinkType $linkType): static
     {
-        $this->sponsor = $sponsor;
+        $this->linkType = $linkType;
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, Sponsor>
+     */
+    public function getSponsors(): Collection
+    {
+        return $this->sponsors;
+    }
+
+    public function addSponsor(Sponsor $sponsor): static
+    {
+        if (!$this->sponsors->contains($sponsor)) {
+            $this->sponsors->add($sponsor);
+            $sponsor->addLink($this);
+        }
+
+        return $this;
+    }
+
+    public function removeSponsor(Sponsor $sponsor): static
+    {
+        if ($this->sponsors->removeElement($sponsor)) {
+            $sponsor->removeLink($this);
+        }
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, Person>
+     */
+    public function getPeople(): Collection
+    {
+        return $this->people;
+    }
+
+    public function addPerson(Person $person): static
+    {
+        if (!$this->people->contains($person)) {
+            $this->people->add($person);
+            $person->addLink($this);
+        }
+
+        return $this;
+    }
+
+    public function removePerson(Person $person): static
+    {
+        if ($this->people->removeElement($person)) {
+            $person->removeLink($this);
+        }
 
         return $this;
     }

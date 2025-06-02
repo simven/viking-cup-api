@@ -2,65 +2,61 @@
 
 namespace App\Entity;
 
-use App\Repository\SponsorRepository;
-use Doctrine\Common\Collections\ArrayCollection;
-use Doctrine\Common\Collections\Collection;
+use App\Repository\MediaFileRepository;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\HttpFoundation\File\File;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Vich\UploaderBundle\Mapping\Annotation as Vich;
 use Symfony\Component\Validator\Constraints as Assert;
 
-#[ORM\Entity(repositoryClass: SponsorRepository::class)]
+#[ORM\Entity(repositoryClass: MediaFileRepository::class)]
 #[Vich\Uploadable]
-class Sponsor
+class MediaFile
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
-    #[Groups(['sponsor:read'])]
+    #[Groups(['media:read'])]
     private ?int $id = null;
 
-    #[ORM\Column(length: 255)]
-    #[Groups(['sponsor:read'])]
-    private ?string $name = null;
-
-    #[ORM\Column(length: 255, nullable: true)]
-    #[Groups(['sponsor:read'])]
-    private ?string $description = null;
+    #[ORM\Column(length: 10)]
+    #[Assert\Choice(choices: ["img", "video"], message: "Le type doit être 'img' ou 'video'.")]
+    #[Groups(['media:read'])]
+    private ?string $type = "img";
 
     #[ORM\Column(length: 255)]
-    #[Groups(['sponsor:read'])]
+    #[Groups(['media:read'])]
     private ?string $filePath = null;
 
-    #[Vich\UploadableField(mapping: "sponsor_file", fileNameProperty: "filePath")]
+    #[Vich\UploadableField(mapping: "media_files", fileNameProperty: "filePath")]
     #[Assert\NotNull(message: "Le fichier est obligatoire.")]
     #[Assert\File(
-        mimeTypes: ["image/jpeg", "image/png", "image/webp"],
-        mimeTypesMessage: "Seuls les fichiers JPEG, PNG et WEBP sont autorisés."
+        mimeTypes: ["image/jpeg", "image/png", "image/webp", "video/mp4"],
+        mimeTypesMessage: "Seuls les fichiers JPEG, PNG, WEBP et MP4 sont autorisés."
     )]
     private ?File $file = null;
 
-    #[ORM\Column(length: 255)]
-    #[Groups(['sponsor:read'])]
+    #[ORM\Column(length: 255, nullable: true)]
+    #[Groups(['media:read'])]
     private ?string $alt = null;
 
-    /**
-     * @var Collection<int, Link>
-     */
-    #[ORM\ManyToMany(targetEntity: Link::class, inversedBy: 'sponsors')]
-    #[Groups(['sponsor:read'])]
-    private Collection $links;
+    #[ORM\Column(length: 255, nullable: true)]
+    #[Groups(['media:read'])]
+    private ?string $author = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    #[Groups(['media:read'])]
+    private ?string $about = null;
 
     #[ORM\Column]
-    private ?\DateTimeImmutable $createdAt;
+    #[Groups(['media:read'])]
+    private \DateTimeImmutable $createdAt;
 
     #[ORM\Column]
-    private ?\DateTimeImmutable $updatedAt;
+    private \DateTimeImmutable $updatedAt;
 
     public function __construct()
     {
-        $this->links = new ArrayCollection();
         $this->createdAt = new \DateTimeImmutable();
         $this->updatedAt = new \DateTimeImmutable();
     }
@@ -70,26 +66,14 @@ class Sponsor
         return $this->id;
     }
 
-    public function getName(): ?string
+    public function getType(): ?string
     {
-        return $this->name;
+        return $this->type;
     }
 
-    public function setName(string $name): static
+    public function setType(string $type): static
     {
-        $this->name = $name;
-
-        return $this;
-    }
-
-    public function getDescription(): ?string
-    {
-        return $this->description;
-    }
-
-    public function setDescription(?string $description): static
-    {
-        $this->description = $description;
+        $this->type = $type;
 
         return $this;
     }
@@ -123,33 +107,33 @@ class Sponsor
         return $this->alt;
     }
 
-    public function setAlt(string $alt): static
+    public function setAlt(?string $alt): static
     {
         $this->alt = $alt;
 
         return $this;
     }
 
-    /**
-     * @return Collection<int, Link>
-     */
-    public function getLinks(): Collection
+    public function getAuthor(): ?string
     {
-        return $this->links;
+        return $this->author;
     }
 
-    public function addLink(Link $link): static
+    public function setAuthor(?string $author): static
     {
-        if (!$this->links->contains($link)) {
-            $this->links->add($link);
-        }
+        $this->author = $author;
 
         return $this;
     }
 
-    public function removeLink(Link $link): static
+    public function getAbout(): ?string
     {
-        $this->links->removeElement($link);
+        return $this->about;
+    }
+
+    public function setAbout(?string $about): static
+    {
+        $this->about = $about;
 
         return $this;
     }

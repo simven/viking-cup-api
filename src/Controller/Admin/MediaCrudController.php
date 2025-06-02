@@ -2,7 +2,7 @@
 
 namespace App\Controller\Admin;
 
-use App\Entity\Media;
+use App\Entity\MediaFile;
 use Doctrine\ORM\EntityManagerInterface;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Action;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Actions;
@@ -25,7 +25,7 @@ class MediaCrudController extends AbstractCrudController
 {
     public static function getEntityFqcn(): string
     {
-        return Media::class;
+        return MediaFile::class;
     }
 
     public function configureFields(string $pageName): iterable
@@ -66,7 +66,7 @@ class MediaCrudController extends AbstractCrudController
 
     public function persistEntity(EntityManagerInterface $entityManager, $entityInstance): void
     {
-        if (!$entityInstance instanceof Media) {
+        if (!$entityInstance instanceof MediaFile) {
             parent::persistEntity($entityManager, $entityInstance);
             return;
         }
@@ -96,7 +96,7 @@ class MediaCrudController extends AbstractCrudController
 
         foreach ($files as $file) {
             if ($file instanceof UploadedFile) {
-                $media = new Media();
+                $media = new MediaFile();
                 $media->setFile($file);
                 $media->setType(str_starts_with($file->getMimeType(), 'image/') ? 'img' : 'video');
 
