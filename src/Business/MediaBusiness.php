@@ -64,7 +64,8 @@ readonly class MediaBusiness
         $mediaPersons = [];
         /** @var Person $person */
         foreach ($persons as $person) {
-            $personArray = $this->serializer->normalize($person, 'json', ['groups' => ['person', 'personPersonType', 'personType']]);
+            $personArray = $this->serializer->normalize($person, 'json', ['groups' => ['person', 'personPersonType', 'personType', 'personRoundDetails', 'roundDetail']]);
+
             $medias = $person->getMedias()->filter(function (Media $media) use ($generatePass, $watchBriefing, $selectedMailSent, $selected, $roundId, $eventId) {
                 return (!$eventId || $media->getRound()->getEvent()->getId() === $eventId) &&
                     (!$roundId || $media->getRound()->getId() === $roundId) &&
@@ -178,15 +179,34 @@ readonly class MediaBusiness
             $media->setPilotFollow($mediaDto->pilotFollow);
         }
 
-        $file = $this->fileHelper->saveFile($insuranceFile, 'media/insurance', $media->getPerson()->getUniqueId() . '.' . $insuranceFile->getClientOriginalExtension());
+        $path = 'media/' . $round->getId() . '/' . $person->getUniqueId();
+
+        $file = $this->fileHelper->saveFile($insuranceFile, $path,  'assurance.' . $insuranceFile->getClientOriginalExtension());
         $media->setInsuranceFilePath($file->getPathname());
 
         if ($bookFile !== null) {
-            $bookFile = $this->fileHelper->saveFile($bookFile, 'media/book', $media->getPerson()->getUniqueId() . $bookFile->getClientOriginalExtension());
+            $bookFile = $this->fileHelper->saveFile($bookFile, $path, 'book' . $bookFile->getClientOriginalExtension());
             $media->setBookFilePath($bookFile->getPathname());
         }
 
         $this->em->persist($media);
+
+        return $media;
+    }
+
+    public function deleteMedia(Media $media): void
+    {
+        $this->em->remove($media);
+        $this->em->flush();
+    }
+
+    public function deleteMediaBook(Media $media): Media
+    {
+        $this->fileHelper->deleteFile($media->getBookFilePath());
+        $media->setBookFilePath(null);
+
+        $this->em->persist($media);
+        $this->em->flush();
 
         return $media;
     }

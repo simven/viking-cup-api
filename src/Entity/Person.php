@@ -94,6 +94,7 @@ class Person
      * @var Collection<int, RoundDetail>
      */
     #[ORM\ManyToMany(targetEntity: RoundDetail::class, inversedBy: 'people')]
+    #[Groups('personRoundDetails')]
     private Collection $roundDetails;
 
     /**

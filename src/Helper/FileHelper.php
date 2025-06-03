@@ -17,4 +17,11 @@ readonly class FileHelper
 
         return $file->move($uploadDir, $filename);
     }
+
+    public function deleteFile(string $filePath): void
+    {
+        if (file_exists($filePath)) {
+            unlink($filePath);
+        }
+    }
 }

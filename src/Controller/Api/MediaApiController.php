@@ -4,6 +4,7 @@ namespace App\Controller\Api;
 
 use App\Business\MediaBusiness;
 use App\Dto\MediaDto;
+use App\Entity\Media;
 use App\Repository\MediaFileRepository;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
@@ -34,7 +35,7 @@ class MediaApiController extends AbstractController
         #[MapQueryParameter] ?bool $generatePass = null
     ): JsonResponse
     {
-        $mediaFiles = $mediaBusiness->getMedias(
+        $medias = $mediaBusiness->getMedias(
             $page ?? 1,
             $limit ?? 20, $sort,
             $order,
@@ -46,7 +47,7 @@ class MediaApiController extends AbstractController
             $generatePass
         );
 
-        return $this->json($mediaFiles, Response::HTTP_OK, [], ['groups' => ['media', 'mediaRound', 'round']]);
+        return $this->json($medias, Response::HTTP_OK, [], ['groups' => ['media', 'mediaRound', 'round', 'roundDetails', 'roundDetail']]);
     }
 
     #[Route('', name: 'create', methods: ['POST'])]
@@ -64,5 +65,27 @@ class MediaApiController extends AbstractController
         $mediaBusiness->createPersonMedia($mediaDto, $insuranceFile, !empty($bookFile) ? $bookFile : null);
 
         return new Response();
+    }
+
+    #[Route('/{media}', name: 'delete', methods: ['DELETE'])]
+    public function deleteMedia(
+        MediaBusiness $mediaBusiness,
+        Media $media
+    ): Response
+    {
+        $mediaBusiness->deleteMedia($media);
+
+        return new Response(null, Response::HTTP_NO_CONTENT);
+    }
+
+    #[Route('/book/{media}', name: 'delete_book', methods: ['DELETE'])]
+    public function deleteMediaBook(
+        MediaBusiness $mediaBusiness,
+        Media $media
+    ): Response
+    {
+        $media = $mediaBusiness->deleteMediaBook($media);
+
+        return $this->json($media, Response::HTTP_OK, [], ['groups' => ['media', 'mediaRound', 'round', 'roundDetails', 'roundDetail']]);
     }
 }
