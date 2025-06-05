@@ -73,12 +73,13 @@ class Person
 
     #[ORM\Column]
     #[Groups('person')]
-    private ?int $warnings = null;
+    private ?int $warnings = 0;
 
     /**
      * @var Collection<int, Link>
      */
     #[ORM\ManyToMany(targetEntity: Link::class, inversedBy: 'people')]
+    #[Groups('personLinks')]
     private Collection $links;
 
     #[ORM\Column(length: 255)]

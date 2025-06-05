@@ -14,15 +14,15 @@ class LinkType
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
-    #[Groups(['sponsor:read'])]
+    #[Groups(['linkType', 'sponsor:read'])]
     private ?int $id = null;
 
     #[ORM\Column(length: 255)]
-    #[Groups(['sponsor:read'])]
+    #[Groups(['linkType', 'sponsor:read'])]
     private ?string $name = null;
 
     #[ORM\Column(length: 255, nullable: true)]
-    #[Groups(['sponsor:read'])]
+    #[Groups(['linkType', 'sponsor:read'])]
     private ?string $icon = null;
 
     /**

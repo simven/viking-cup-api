@@ -14,15 +14,15 @@ class Link
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
-    #[Groups(['sponsor:read'])]
+    #[Groups(['link', 'sponsor:read'])]
     private ?int $id = null;
 
     #[ORM\Column(length: 255)]
-    #[Groups(['sponsor:read'])]
+    #[Groups(['link', 'sponsor:read'])]
     private ?string $url = null;
 
     #[ORM\ManyToOne(inversedBy: 'links')]
-    #[Groups(['sponsor:read'])]
+    #[Groups(['linkLinkType', 'sponsor:read'])]
     private ?LinkType $linkType = null;
 
     /**

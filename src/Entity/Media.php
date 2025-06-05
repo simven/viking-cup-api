@@ -43,7 +43,7 @@ class Media
     #[Groups('media')]
     private ?bool $generatePass = false;
 
-    #[ORM\ManyToOne(inversedBy: 'media')]
+    #[ORM\ManyToOne(inversedBy: 'medias')]
     #[Groups('mediaRound')]
     private ?Round $round = null;
 

@@ -2,16 +2,16 @@
 
 namespace App\Business;
 
-use App\Dto\EmailDto;
 use App\Dto\MediaDto;
+use App\Dto\MediaSelectionDto;
 use App\Entity\Link;
 use App\Entity\Media;
 use App\Entity\Person;
 use App\Entity\PersonType;
 use App\Entity\Round;
 use App\Helper\FileHelper;
+use App\Helper\EmailHelper;
 use App\Repository\LinkTypeRepository;
-use App\Repository\MediaRepository;
 use App\Repository\PersonRepository;
 use App\Repository\PersonTypeRepository;
 use App\Repository\RoundDetailRepository;
@@ -26,15 +26,14 @@ use Symfony\Component\Serializer\SerializerInterface;
 readonly class MediaBusiness
 {
     public function __construct(
-        private PersonTypeRepository $personTypeRepository,
-        private PersonRepository $personRepository,
-        private LinkTypeRepository $linkTypeRepository,
-        private MediaRepository $mediaRepository,
-        private RoundRepository $roundRepository,
-        private RoundDetailRepository $roundDetailRepository,
-        private FileHelper $fileHelper,
-        private EmailBusiness $emailBusiness,
-        private SerializerInterface $serializer,
+        private PersonTypeRepository   $personTypeRepository,
+        private PersonRepository       $personRepository,
+        private LinkTypeRepository     $linkTypeRepository,
+        private RoundRepository        $roundRepository,
+        private RoundDetailRepository  $roundDetailRepository,
+        private FileHelper             $fileHelper,
+        private EmailHelper            $emailHelper,
+        private SerializerInterface    $serializer,
         private EntityManagerInterface $em
     )
     {}
@@ -46,13 +45,16 @@ readonly class MediaBusiness
         ?string $order = null,
         ?int $eventId = null,
         ?int $roundId = null,
+        ?string $name = null,
+        ?string $email = null,
+        ?string $phone = null,
         ?bool $selected = null,
         ?bool $selectedMailSent = null,
         ?bool $watchBriefing = null,
         ?bool $generatePass = null
     ): array
     {
-        $persons = $this->personRepository->findAllPaginated($sort, $order, 'media');
+        $persons = $this->personRepository->findAllPaginated($sort, $order, $name, $email, $phone, $selected, $selectedMailSent, $watchBriefing, $generatePass, 'media');
 
         $adapter = new QueryAdapter($persons, false, false);
         $pager = new Pagerfanta($adapter);
@@ -64,20 +66,22 @@ readonly class MediaBusiness
         $mediaPersons = [];
         /** @var Person $person */
         foreach ($persons as $person) {
-            $personArray = $this->serializer->normalize($person, 'json', ['groups' => ['person', 'personPersonType', 'personType', 'personRoundDetails', 'roundDetail']]);
+            $personArray = $this->serializer->normalize($person, 'json', ['groups' => ['person', 'personPersonType', 'personType', 'personRoundDetails', 'roundDetail', 'personLinks', 'link', 'linkLinkType', 'linkType']]);
 
             $medias = $person->getMedias()->filter(function (Media $media) use ($generatePass, $watchBriefing, $selectedMailSent, $selected, $roundId, $eventId) {
                 return (!$eventId || $media->getRound()->getEvent()->getId() === $eventId) &&
                     (!$roundId || $media->getRound()->getId() === $roundId) &&
-                    (!$selected || $media->isSelected() === $selected) &&
-                    (!$selectedMailSent || $media->isSelectedMailSent() === $selectedMailSent) &&
-                    (!$watchBriefing || $media->isWatchBriefing() === $watchBriefing) &&
-                    (!$generatePass || $media->isGeneratePass() === $generatePass);
+                    ($selected === null || $media->isSelected() === $selected) &&
+                    ($selectedMailSent === null || $media->isSelectedMailSent() === $selectedMailSent) &&
+                    ($watchBriefing === null || $media->isWatchBriefing() === $watchBriefing) &&
+                    ($generatePass === null || $media->isGeneratePass() === $generatePass);
             });
 
             $personArray['medias'] = array_values($medias->toArray());
 
-            $mediaPersons[] = $personArray;
+            if (!empty($personArray['medias'])) {
+                $mediaPersons[] = $personArray;
+            }
         }
 
         return [
@@ -99,30 +103,15 @@ readonly class MediaBusiness
 
         $person = $this->createPerson($mediaDto, $personType, $nextRound);
 
-        if (!empty($mediaDto->instagram)){
-            $this->createInstagramLink($person, $mediaDto->instagram);
+        if (!empty($mediaDto->instagram)) {
+            $this->upsertInstagramLink($person, $mediaDto->instagram);
         }
 
         $this->createMedia($person, $nextRound, $insuranceFile, $bookFile);
 
         $this->em->flush();
 
-        $emailDto = new EmailDto(
-            fromName: 'Viking Cup',
-            to: $mediaDto->email,
-            subject: 'Confirmation de ta demande d\'accréditation média pour le '. $nextRound->getName() . ' de la Viking Cup',
-            message: <<<HTML
-                <p>Bonjour $mediaDto->firstName,</p>
-                <p>Merci pour ta demande d’inscription en tant que média pour la prochaine édition de la <strong>Viking Cup</strong>.</p>
-                <p>Ta demande a bien été reçue. Il s’agit pour le moment d’une <strong>demande d’accréditation</strong>, qui sera examinée avec attention par notre équipe.</p>
-                <p>Tu recevras une réponse, qu’elle soit positive ou négative, <strong>au plus tard un mois avant le début de la compétition</strong>.</p>
-                <p>Tu peux retrouver le règlement média en pièce jointe à ce mail.</p>
-                <p>Merci pour l’intérêt que tu portes à la Viking Cup. N’hésite pas à nous contacter si tu as la moindre question.</p>
-                <p>Bien cordialement,<br><strong>L’équipe Viking Cup</strong></p>
-                HTML,
-            attachment: 'https://viking-cup.fr/viking-cup-reglement-media.pdf'
-        );
-        $this->emailBusiness->sendEmail($emailDto);
+        $this->emailHelper->sendPreselectedEmail($mediaDto->email, $nextRound, $mediaDto->firstName);
     }
 
     public function createPerson(MediaDto $mediaDto, PersonType $personType, Round $round): Person
@@ -151,18 +140,22 @@ readonly class MediaBusiness
         return $person;
     }
 
-    public function createInstagramLink(Person $person, string $instagram): void
+    public function upsertInstagramLink(Person $person, string $instagram): void
     {
         if ($person->getLinks()->isEmpty() || $person->getLinks()->filter(fn($link) => $link->getLinkType()->getName() === 'Instagram')->isEmpty()) {
             $instaLinkType = $this->linkTypeRepository->findOneBy(['name' => 'Instagram']);
 
-            $link = new Link();
-            $link->setLinkType($instaLinkType)
+            $instaLink = new Link();
+            $instaLink->setLinkType($instaLinkType)
                 ->setUrl(ltrim($instagram, '@'))
                 ->addPerson($person);
-
-            $this->em->persist($link);
+        } else {
+            $instaLink = $person->getLinks()->filter(fn($link) => $link->getLinkType()->getName() === 'Instagram')->first();
+            $instaLink->setUrl(ltrim($instagram, '@'));
         }
+
+        $this->em->persist($instaLink);
+        $this->em->flush();
     }
 
     public function createMedia(Person $person, Round $round, UploadedFile $insuranceFile, ?UploadedFile $bookFile): Media
@@ -181,8 +174,8 @@ readonly class MediaBusiness
 
         $path = 'media/' . $round->getId() . '/' . $person->getUniqueId();
 
-        $file = $this->fileHelper->saveFile($insuranceFile, $path,  'assurance.' . $insuranceFile->getClientOriginalExtension());
-        $media->setInsuranceFilePath($file->getPathname());
+        $insuranceFile = $this->fileHelper->saveFile($insuranceFile, $path,  'assurance.' . $insuranceFile->getClientOriginalExtension());
+        $media->setInsuranceFilePath($insuranceFile->getPathname());
 
         if ($bookFile !== null) {
             $bookFile = $this->fileHelper->saveFile($bookFile, $path, 'book' . $bookFile->getClientOriginalExtension());
@@ -192,6 +185,76 @@ readonly class MediaBusiness
         $this->em->persist($media);
 
         return $media;
+    }
+
+    public function updatePersonMedia(Media $media, MediaDto $mediaDto, ?UploadedFile $insuranceFile, ?UploadedFile $bookFile): void
+    {
+        // update person
+        $person = $media->getPerson();
+
+        $person->setFirstName($mediaDto->firstName)
+            ->setLastName($mediaDto->lastName)
+            ->setEmail($mediaDto->email)
+            ->setPhone($mediaDto->phone)
+            ->setWarnings($mediaDto->warnings);
+
+        // Supprimer les détails de rounds qui ne sont plus dans la liste de présence
+        foreach ($person->getRoundDetails()->toArray() as $roundDetail) {
+            if (!in_array($roundDetail->getId(), $mediaDto->presence)) {
+                $person->removeRoundDetail($roundDetail);
+            }
+        }
+        
+        // Ajouter les nouveaux détails de rounds
+        foreach ($mediaDto->presence as $roundDetailId) {
+            // Vérifier si le détail de round existe déjà
+            if ($person->getRoundDetails()->exists(fn($key, $rd) => $rd->getId() === $roundDetailId)) {
+                continue;
+            }
+
+            $roundDetail = $this->roundDetailRepository->find($roundDetailId);
+            if ($roundDetail !== null) {
+                $person->addRoundDetail($roundDetail);
+            }
+        }
+        
+
+        $this->em->persist($person);
+
+        // update instagram link
+        if (!empty($mediaDto->instagram)) {
+            $this->upsertInstagramLink($person, $mediaDto->instagram);
+        }
+
+        // update media
+        $media->setPilotFollow($mediaDto->pilotFollow)
+            ->setSelected($mediaDto->selected);
+
+        if ($insuranceFile !== null || $bookFile !== null) {
+            $path = 'media/' . $media->getRound()->getId() . '/' . $person->getUniqueId();
+
+            if ($insuranceFile !== null) {
+                $insuranceFile = $this->fileHelper->saveFile($insuranceFile, $path, 'assurance.' . $insuranceFile->getClientOriginalExtension());
+                $media->setInsuranceFilePath($insuranceFile->getPathname());
+            }
+
+            if ($bookFile !== null) {
+                $bookFile = $this->fileHelper->saveFile($bookFile, $path, 'book' . $bookFile->getClientOriginalExtension());
+                $media->setBookFilePath($bookFile->getPathname());
+            }
+        }
+
+        $this->em->persist($media);
+
+        $this->em->flush();
+    }
+
+    public function updateMediaSelection(Media $media, MediaSelectionDto $mediaSelectionDto): void
+    {
+        $media->setSelected($mediaSelectionDto->selected);
+
+        $this->em->persist($media);
+        $this->em->flush();
     }
 
     public function deleteMedia(Media $media): void
@@ -209,5 +272,28 @@ readonly class MediaBusiness
         $this->em->flush();
 
         return $media;
+    }
+
+    public function sendSelectedEmails(Round $round): array
+    {
+        $errors = [];
+        $medias = $round->getMedias()->filter(fn(Media $media) => $media->isSelected() && !$media->isSelectedMailSent());
+
+        foreach ($medias->toArray() as $media) {
+            try {
+                $this->emailHelper->sendSelectedEmail($media->getPerson()->getEmail(), $round, $media->getPerson()->getFirstName());
+                $media->setSelectedMailSent(true);
+                $this->em->persist($media);
+            } catch (\Exception $e) {
+                $errors[] = [
+                    'email' => $media->getPerson()?->getEmail(),
+                    'error' => $e->getMessage()
+                ];
+            }
+        }
+
+        $this->em->flush();
+
+        return $errors;
     }
 }

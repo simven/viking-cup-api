@@ -20,17 +20,53 @@ class PersonRepository extends ServiceEntityRepository
     public function findAllPaginated(
         ?string $sort = null,
         ?string $order = null,
+        ?string $name = null,
+        ?string $email = null,
+        ?string $phone = null,
+        ?bool $selected = null,
+        ?bool $selectedMailSent = null,
+        ?bool $watchBriefing = null,
+        ?bool $generatePass = null,
         ?string $personType = null
     ): QueryBuilder
     {
         $order = $order ?? 'ASC';
 
         $qb = $this->createQueryBuilder('p')
-            ->innerJoin('p.personType', 'pt');
+            ->innerJoin('p.personType', 'pt')
+            ->innerJoin('p.medias', 'm');
 
         if ($personType !== null) {
             $qb->andWhere('pt.name = :personType')
                 ->setParameter('personType', $personType);
+        }
+        if ($name !== null) {
+            $qb->andWhere('p.firstName LIKE :name OR p.lastName LIKE :name')
+                ->setParameter('name', '%' . $name . '%');
+        }
+        if ($email !== null) {
+            $qb->andWhere('p.email LIKE :email')
+                ->setParameter('email', '%' . $email . '%');
+        }
+        if ($phone !== null) {
+            $qb->andWhere('p.phone LIKE :phone')
+                ->setParameter('phone', '%' . $phone . '%');
+        }
+        if ($selected !== null) {
+            $qb->andWhere('m.selected = :selected')
+                ->setParameter('selected', $selected);
+        }
+        if ($selectedMailSent !== null) {
+            $qb->andWhere('m.selectedMailSent = :selectedMailSent')
+                ->setParameter('selectedMailSent', $selectedMailSent);
+        }
+        if ($watchBriefing !== null) {
+            $qb->andWhere('m.watchBriefing = :watchBriefing')
+                ->setParameter('watchBriefing', $watchBriefing);
+        }
+        if ($generatePass !== null) {
+            $qb->andWhere('m.generatePass = :generatePass')
+                ->setParameter('generatePass', $generatePass);
         }
 
         switch ($sort) {

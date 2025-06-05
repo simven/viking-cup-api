@@ -63,7 +63,7 @@ class Round
      * @var Collection<int, Media>
      */
     #[ORM\OneToMany(targetEntity: Media::class, mappedBy: 'round')]
-    private Collection $media;
+    private Collection $medias;
 
     public function __construct()
     {
@@ -71,7 +71,7 @@ class Round
         $this->pilotRoundCategories = new ArrayCollection();
         $this->roundCategories = new ArrayCollection();
         $this->people = new ArrayCollection();
-        $this->media = new ArrayCollection();
+        $this->medias = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -247,27 +247,27 @@ class Round
     /**
      * @return Collection<int, Media>
      */
-    public function getMedia(): Collection
+    public function getMedias(): Collection
     {
-        return $this->media;
+        return $this->medias;
     }
 
-    public function addMedium(Media $medium): static
+    public function addMedia(Media $media): static
     {
-        if (!$this->media->contains($medium)) {
-            $this->media->add($medium);
-            $medium->setRound($this);
+        if (!$this->medias->contains($media)) {
+            $this->medias->add($media);
+            $media->setRound($this);
         }
 
         return $this;
     }
 
-    public function removeMedium(Media $medium): static
+    public function removeMedia(Media $media): static
     {
-        if ($this->media->removeElement($medium)) {
+        if ($this->medias->removeElement($media)) {
             // set the owning side to null (unless already changed)
-            if ($medium->getRound() === $this) {
-                $medium->setRound(null);
+            if ($media->getRound() === $this) {
+                $media->setRound(null);
             }
         }
 
