@@ -37,7 +37,11 @@ class Media
 
     #[ORM\Column]
     #[Groups('media')]
-    private ?bool $watchBriefing = false;
+    private ?bool $eLearningMailSent = false;
+
+    #[ORM\Column]
+    #[Groups('media')]
+    private ?bool $briefingSeen = false;
 
     #[ORM\Column]
     #[Groups('media')]
@@ -117,14 +121,26 @@ class Media
         return $this;
     }
 
-    public function isWatchBriefing(): ?bool
+    public function isELearningMailSent(): ?bool
     {
-        return $this->watchBriefing;
+        return $this->eLearningMailSent;
     }
 
-    public function setWatchBriefing(bool $watchBriefing): static
+    public function setELearningMailSent(bool $eLearningMailSent): static
     {
-        $this->watchBriefing = $watchBriefing;
+        $this->eLearningMailSent = $eLearningMailSent;
+
+        return $this;
+    }
+
+    public function isBriefingSeen(): ?bool
+    {
+        return $this->briefingSeen;
+    }
+
+    public function setBriefingSeen(bool $briefingSeen): static
+    {
+        $this->briefingSeen = $briefingSeen;
 
         return $this;
     }

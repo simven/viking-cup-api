@@ -9,7 +9,7 @@ class MediaDto
         public string $lastName,
         public string $email,
         public string $phone,
-        public int $warnings,
+        public int $warnings = 0,
         public ?string $instagram = null,
         public ?string $pilotFollow = null,
         public bool $selected = false,

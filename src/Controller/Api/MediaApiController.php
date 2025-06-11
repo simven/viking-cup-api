@@ -7,7 +7,6 @@ use App\Dto\MediaDto;
 use App\Dto\MediaSelectionDto;
 use App\Entity\Media;
 use App\Entity\Round;
-use App\Repository\MediaFileRepository;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -29,15 +28,16 @@ class MediaApiController extends AbstractController
         #[MapQueryParameter] ?int $limit,
         #[MapQueryParameter] ?string $sort,
         #[MapQueryParameter] ?string $order,
-        #[MapQueryParameter] ?int $eventId = null,
-        #[MapQueryParameter] ?int $roundId = null,
+        #[MapQueryParameter] ?int    $eventId = null,
+        #[MapQueryParameter] ?int    $roundId = null,
         #[MapQueryParameter] ?string $name = null,
         #[MapQueryParameter] ?string $email = null,
         #[MapQueryParameter] ?string $phone = null,
-        #[MapQueryParameter] ?bool $selected = null,
-        #[MapQueryParameter] ?bool $selectedMailSent = null,
-        #[MapQueryParameter] ?bool $watchBriefing = null,
-        #[MapQueryParameter] ?bool $generatePass = null
+        #[MapQueryParameter] ?bool   $selected = null,
+        #[MapQueryParameter] ?bool   $selectedMailSent = null,
+        #[MapQueryParameter] ?bool   $eLearningMailSent = null,
+        #[MapQueryParameter] ?bool   $briefingSeen = null,
+        #[MapQueryParameter] ?bool   $generatePass = null
     ): JsonResponse
     {
         $medias = $mediaBusiness->getMedias(
@@ -51,14 +51,30 @@ class MediaApiController extends AbstractController
             $phone,
             $selected,
             $selectedMailSent,
-            $watchBriefing,
+            $eLearningMailSent,
+            $briefingSeen,
             $generatePass
         );
 
         return $this->json($medias, Response::HTTP_OK, [], ['groups' => ['media', 'mediaRound', 'round', 'roundDetails', 'roundDetail', 'roundEvent', 'event']]);
     }
 
-    #[Route('', name: 'create', methods: ['POST'])]
+    #[Route('/public/{uniqueId}', name: 'get_by_uid', methods: ['GET'])]
+    public function getMedia(
+        MediaBusiness $mediaBusiness,
+        string $uniqueId
+    ): JsonResponse
+    {
+        $media = $mediaBusiness->getMediaByUniqueId($uniqueId);
+
+        if (!$media) {
+            return new JsonResponse(['message' => 'Media not found'], Response::HTTP_NOT_FOUND);
+        }
+
+        return $this->json($media, Response::HTTP_OK, [], ['groups' => ['media', 'mediaRound', 'round', 'roundDetails', 'roundDetail', 'roundEvent', 'event']]);
+    }
+
+    #[Route('/public', name: 'create', methods: ['POST'])]
     public function createMedia(
         MediaBusiness $mediaBusiness,
         Request $request,
@@ -127,6 +143,56 @@ class MediaApiController extends AbstractController
         return $this->json($media, Response::HTTP_OK, [], ['groups' => ['media', 'mediaRound', 'round', 'roundDetails', 'roundDetail']]);
     }
 
+    #[Route('/public/generate-pass/{media}', name: 'generate_pass', methods: ['GET'])]
+    public function generatePass(
+        MediaBusiness $mediaBusiness,
+        Media $media,
+        #[MapQueryParameter] string $uniqueId
+    ): Response
+    {
+        if ($media->getPerson()->getUniqueId() !== $uniqueId) {
+            throw new \Exception('Unique ID does not match the media person unique ID');
+        }
+        $pdf = $mediaBusiness->generatePass($media);
+
+        return new Response($pdf, 200, ['Content-Type' => 'application/pdf', 'Content-Disposition' => 'filename="pass_' . str_replace('.', '_', $uniqueId) . '.pdf"']);
+    }
+
+    #[Route('/public/briefing-seen/{media}', name: 'set_briefing_seen', methods: ['PUT'])]
+    public function briefingSeen(
+        MediaBusiness $mediaBusiness,
+        Media $media,
+        #[MapQueryParameter] string $uniqueId
+    ): Response
+    {
+        if ($media->getPerson()->getUniqueId() !== $uniqueId) {
+            throw new \Exception('Unique ID does not match the media person unique ID');
+        }
+
+        $mediaBusiness->briefingSeen($media);
+
+        return new Response();
+    }
+
+    #[Route('/public/pass-generated/{media}', name: 'set_pass_generated', methods: ['PUT'])]
+    public function passGenerated(
+        MediaBusiness $mediaBusiness,
+        Media $media,
+        #[MapQueryParameter] string $uniqueId
+    ): Response
+    {
+        if ($media->getPerson()->getUniqueId() !== $uniqueId) {
+            throw new \Exception('Unique ID does not match the media person unique ID');
+        }
+        if (!$media->isBriefingSeen()) {
+            throw new \Exception('Briefing must be seen before generating pass');
+        }
+
+        $mediaBusiness->passGenerated($media);
+
+        return new Response();
+    }
+
     #[Route('/send-selected-email/{round}', name: 'send_selected_email')]
     public function sendSelectedEmails(
         MediaBusiness $mediaBusiness,
@@ -134,6 +200,17 @@ class MediaApiController extends AbstractController
     ): Response
     {
         $errors = $mediaBusiness->sendSelectedEmails($round);
+
+        return $this->json($errors);
+    }
+
+    #[Route('/send-elearning-email/{round}', name: 'send_elearning_email')]
+    public function sendELearningEmails(
+        MediaBusiness $mediaBusiness,
+        Round $round
+    ): Response
+    {
+        $errors = $mediaBusiness->sendELearningEmails($round);
 
         return $this->json($errors);
     }

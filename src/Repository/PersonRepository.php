@@ -23,10 +23,11 @@ class PersonRepository extends ServiceEntityRepository
         ?string $name = null,
         ?string $email = null,
         ?string $phone = null,
-        ?bool $selected = null,
-        ?bool $selectedMailSent = null,
-        ?bool $watchBriefing = null,
-        ?bool $generatePass = null,
+        ?bool   $selected = null,
+        ?bool   $selectedMailSent = null,
+        ?bool   $eLearningMailSent = null,
+        ?bool   $briefingSeen = null,
+        ?bool   $generatePass = null,
         ?string $personType = null
     ): QueryBuilder
     {
@@ -60,9 +61,13 @@ class PersonRepository extends ServiceEntityRepository
             $qb->andWhere('m.selectedMailSent = :selectedMailSent')
                 ->setParameter('selectedMailSent', $selectedMailSent);
         }
-        if ($watchBriefing !== null) {
-            $qb->andWhere('m.watchBriefing = :watchBriefing')
-                ->setParameter('watchBriefing', $watchBriefing);
+        if ($eLearningMailSent !== null) {
+            $qb->andWhere('m.eLearningMailSent = :eLearningMailSent')
+                ->setParameter('eLearningMailSent', $eLearningMailSent);
+        }
+        if ($briefingSeen !== null) {
+            $qb->andWhere('m.briefingSeen = :briefingSeen')
+                ->setParameter('briefingSeen', $briefingSeen);
         }
         if ($generatePass !== null) {
             $qb->andWhere('m.generatePass = :generatePass')

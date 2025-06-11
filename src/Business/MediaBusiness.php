@@ -11,6 +11,7 @@ use App\Entity\PersonType;
 use App\Entity\Round;
 use App\Helper\FileHelper;
 use App\Helper\EmailHelper;
+use App\Helper\PdfHelper;
 use App\Repository\LinkTypeRepository;
 use App\Repository\PersonRepository;
 use App\Repository\PersonTypeRepository;
@@ -18,10 +19,14 @@ use App\Repository\RoundDetailRepository;
 use App\Repository\RoundRepository;
 use DateTime;
 use Doctrine\ORM\EntityManagerInterface;
+use Exception;
 use Pagerfanta\Doctrine\ORM\QueryAdapter;
 use Pagerfanta\Pagerfanta;
+use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\Serializer\SerializerInterface;
+use TCPDF_FONTS;
+use Twig\Environment;
 
 readonly class MediaBusiness
 {
@@ -33,7 +38,9 @@ readonly class MediaBusiness
         private RoundDetailRepository  $roundDetailRepository,
         private FileHelper             $fileHelper,
         private EmailHelper            $emailHelper,
+        private Environment            $twig,
         private SerializerInterface    $serializer,
+        private ParameterBagInterface  $parameterBag,
         private EntityManagerInterface $em
     )
     {}
@@ -43,18 +50,19 @@ readonly class MediaBusiness
         int $limit,
         ?string $sort = null,
         ?string $order = null,
-        ?int $eventId = null,
-        ?int $roundId = null,
+        ?int    $eventId = null,
+        ?int    $roundId = null,
         ?string $name = null,
         ?string $email = null,
         ?string $phone = null,
-        ?bool $selected = null,
-        ?bool $selectedMailSent = null,
-        ?bool $watchBriefing = null,
-        ?bool $generatePass = null
+        ?bool   $selected = null,
+        ?bool   $selectedMailSent = null,
+        ?bool   $eLearningMailSent = null,
+        ?bool   $briefingSeen = null,
+        ?bool   $generatePass = null
     ): array
     {
-        $persons = $this->personRepository->findAllPaginated($sort, $order, $name, $email, $phone, $selected, $selectedMailSent, $watchBriefing, $generatePass, 'media');
+        $persons = $this->personRepository->findAllPaginated($sort, $order, $name, $email, $phone, $selected, $selectedMailSent, $eLearningMailSent, $briefingSeen, $generatePass, 'media');
 
         $adapter = new QueryAdapter($persons, false, false);
         $pager = new Pagerfanta($adapter);
@@ -68,12 +76,13 @@ readonly class MediaBusiness
         foreach ($persons as $person) {
             $personArray = $this->serializer->normalize($person, 'json', ['groups' => ['person', 'personPersonType', 'personType', 'personRoundDetails', 'roundDetail', 'personLinks', 'link', 'linkLinkType', 'linkType']]);
 
-            $medias = $person->getMedias()->filter(function (Media $media) use ($generatePass, $watchBriefing, $selectedMailSent, $selected, $roundId, $eventId) {
+            $medias = $person->getMedias()->filter(function (Media $media) use ($generatePass, $briefingSeen, $selectedMailSent, $eLearningMailSent, $selected, $roundId, $eventId) {
                 return (!$eventId || $media->getRound()->getEvent()->getId() === $eventId) &&
                     (!$roundId || $media->getRound()->getId() === $roundId) &&
                     ($selected === null || $media->isSelected() === $selected) &&
                     ($selectedMailSent === null || $media->isSelectedMailSent() === $selectedMailSent) &&
-                    ($watchBriefing === null || $media->isWatchBriefing() === $watchBriefing) &&
+                    ($eLearningMailSent === null || $media->isELearningMailSent() === $eLearningMailSent) &&
+                    ($briefingSeen === null || $media->isBriefingSeen() === $briefingSeen) &&
                     ($generatePass === null || $media->isGeneratePass() === $generatePass);
             });
 
@@ -92,6 +101,24 @@ readonly class MediaBusiness
             ],
             'medias' => $mediaPersons
         ];
+    }
+
+    public function getMediaByUniqueId(string $uniqueId): ?Media
+    {
+        $now = new DateTime();
+        $nextRound = $this->roundRepository->findRoundFromDate($now);
+        if ($nextRound === null) {
+            throw new Exception('Next round not found');
+        }
+
+        $person = $this->personRepository->findOneBy(['uniqueId' => $uniqueId]);
+
+        $media = $person->getMedias()->filter(fn(Media $media) => $media->getRound()->getId() === $nextRound->getId())->first();
+        if ($media === false) {
+            return null;
+        }
+
+        return $media;
     }
 
     public function createPersonMedia(MediaDto $mediaDto, UploadedFile $insuranceFile, ?UploadedFile $bookFile): void
@@ -274,6 +301,49 @@ readonly class MediaBusiness
         return $media;
     }
 
+    public function generatePass(Media $media): string
+    {
+        $html = $this->twig->render('pdf/pass-media/pass.html.twig', ['media' => $media]);
+
+        $publicDir = $this->parameterBag->get('kernel.project_dir');
+
+        $figtreeFont = TCPDF_FONTS::addTTFfont($publicDir . '/public/fonts/figtree.ttf', 'TrueTypeUnicode', '', 96);
+        $figtreeLightFont = TCPDF_FONTS::addTTFfont($publicDir . '/public/fonts/figtree-light.ttf', 'TrueTypeUnicode', '', 96);
+        $figtreeBoldFont = TCPDF_FONTS::addTTFfont($publicDir . '/public/fonts/figtree-bold.ttf', 'TrueTypeUnicode', '', 96);
+        $finderFont = TCPDF_FONTS::addTTFfont($publicDir . '/public/fonts/finder.ttf', 'TrueTypeUnicode', '', 96);
+
+
+        $pdf = new PdfHelper($this->twig, $media);
+        $pdf->setTitle('Pass #' . $media->getId());
+        $fileName = 'pass_media' . $media->getId() . '.pdf';
+
+        $pdf->SetFooterMargin(28);
+        $pdf->addFont($figtreeFont);
+        $pdf->addFont($figtreeLightFont);
+        $pdf->addFont($figtreeBoldFont);
+        $pdf->addFont($finderFont);
+        $pdf->SetHeaderMargin();
+        $pdf->setMargins(10, 100, 10);
+        $pdf->AddPage();
+        $pdf->writeHTML($html, true, false, true);
+
+        return $pdf->Output($fileName);
+    }
+
+    public function briefingSeen(Media $media): void
+    {
+        $media->setBriefingSeen(true);
+        $this->em->persist($media);
+        $this->em->flush();
+    }
+
+    public function passGenerated(Media $media): void
+    {
+        $media->setGeneratePass(true);
+        $this->em->persist($media);
+        $this->em->flush();
+    }
+
     public function sendSelectedEmails(Round $round): array
     {
         $errors = [];
@@ -284,7 +354,30 @@ readonly class MediaBusiness
                 $this->emailHelper->sendSelectedEmail($media->getPerson()->getEmail(), $round, $media->getPerson()->getFirstName());
                 $media->setSelectedMailSent(true);
                 $this->em->persist($media);
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
+                $errors[] = [
+                    'email' => $media->getPerson()?->getEmail(),
+                    'error' => $e->getMessage()
+                ];
+            }
+        }
+
+        $this->em->flush();
+
+        return $errors;
+    }
+
+    public function sendELearningEmails(Round $round): array
+    {
+        $errors = [];
+        $medias = $round->getMedias()->filter(fn(Media $media) => $media->isSelected() && $media->isSelectedMailSent());
+
+        foreach ($medias->toArray() as $media) {
+            try {
+                $this->emailHelper->sendELearningEmail($media->getPerson()->getEmail(), $round, $media->getPerson()->getFirstName(), $media->getPerson()->getUniqueId());
+                $media->setELearningMailSent(true);
+                $this->em->persist($media);
+            } catch (Exception $e) {
                 $errors[] = [
                     'email' => $media->getPerson()?->getEmail(),
                     'error' => $e->getMessage()

@@ -85,6 +85,9 @@
             "tests/bootstrap.php"
         ]
     },
+    "qipsius/tcpdf-bundle": {
+        "version": "3.0.5"
+    },
     "symfony/asset-mapper": {
         "version": "7.2",
         "recipe": {
