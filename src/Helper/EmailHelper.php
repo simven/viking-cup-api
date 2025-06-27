@@ -69,12 +69,10 @@ readonly class EmailHelper
                 <p>Bonjour $firstName,</p>
                 <p>Tu peux dès à présent visionner la vidéo briefing obligatoire en cliquant sur le lien : <a href="$mediaUrl/e-learning/$uniqueId">$mediaUrl/e-learning/$uniqueId</a>.</p>
                 <p>Une fois la vidéo terminée, tu pourras télécharger directement ton <strong>pass média personnalisé</strong>, généré à ton nom.</p>
-                <p>Tu peux également retrouver le briefing en pièce jointe afin de le consulter à tout moment.</p>
                 <p>Si, pour une quelconque raison, tu ne peux finalement pas être présent·e, merci de nous en informer au plus vite afin que nous puissions réattribuer ta place.</p>
                 <p>Merci encore pour ton intérêt pour la Viking Cup. On a hâte de t’accueillir sur l’événement !</p>
                 <p>Bien cordialement,<br><strong>L’équipe Viking Cup</strong></p>
-                HTML,
-            attachment: 'https://viking-cup.fr/viking-cup-ealearning-media.mp4'
+                HTML
         );
 
         $this->emailBusiness->sendEmail($emailDto);

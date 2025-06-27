@@ -204,7 +204,7 @@ class MediaApiController extends AbstractController
         return $this->json($errors);
     }
 
-    #[Route('/send-elearning-email/{round}', name: 'send_elearning_email')]
+    #[Route('/send-e-learning-email/{round}', name: 'send_elearning_email')]
     public function sendELearningEmails(
         MediaBusiness $mediaBusiness,
         Round $round
