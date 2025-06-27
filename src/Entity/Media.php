@@ -4,160 +4,179 @@ namespace App\Entity;
 
 use App\Repository\MediaRepository;
 use Doctrine\ORM\Mapping as ORM;
-use Symfony\Component\HttpFoundation\File\File;
 use Symfony\Component\Serializer\Attribute\Groups;
-use Vich\UploaderBundle\Mapping\Annotation as Vich;
-use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: MediaRepository::class)]
-#[Vich\Uploadable]
 class Media
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
-    #[Groups(['media:read'])]
+    #[Groups('media')]
     private ?int $id = null;
 
-    #[ORM\Column(length: 10)]
-    #[Assert\Choice(choices: ["img", "video"], message: "Le type doit être 'img' ou 'video'.")]
-    #[Groups(['media:read'])]
-    private ?string $type = "img";
-
     #[ORM\Column(length: 255)]
-    #[Groups(['media:read'])]
-    private ?string $filePath = null;
-
-    #[Vich\UploadableField(mapping: "media_files", fileNameProperty: "filePath")]
-    #[Assert\NotNull(message: "Le fichier est obligatoire.")]
-    #[Assert\File(
-        mimeTypes: ["image/jpeg", "image/png", "image/webp", "video/mp4"],
-        mimeTypesMessage: "Seuls les fichiers JPEG, PNG, WEBP et MP4 sont autorisés."
-    )]
-    private ?File $file = null;
+    #[Groups('media')]
+    private ?string $insuranceFilePath = null;
 
     #[ORM\Column(length: 255, nullable: true)]
-    #[Groups(['media:read'])]
-    private ?string $alt = null;
+    #[Groups('media')]
+    private ?string $bookFilePath = null;
 
     #[ORM\Column(length: 255, nullable: true)]
-    #[Groups(['media:read'])]
-    private ?string $author = null;
-
-    #[ORM\Column(length: 255, nullable: true)]
-    #[Groups(['media:read'])]
-    private ?string $about = null;
+    #[Groups('media')]
+    private ?string $pilotFollow = null;
 
     #[ORM\Column]
-    #[Groups(['media:read'])]
-    private \DateTimeImmutable $createdAt;
+    #[Groups('media')]
+    private ?bool $selected = false;
 
     #[ORM\Column]
-    private \DateTimeImmutable $updatedAt;
+    #[Groups('media')]
+    private ?bool $selectedMailSent = false;
 
-    public function __construct()
-    {
-        $this->createdAt = new \DateTimeImmutable();
-        $this->updatedAt = new \DateTimeImmutable();
-    }
+    #[ORM\Column]
+    #[Groups('media')]
+    private ?bool $eLearningMailSent = false;
+
+    #[ORM\Column]
+    #[Groups('media')]
+    private ?bool $briefingSeen = false;
+
+    #[ORM\Column]
+    #[Groups('media')]
+    private ?bool $generatePass = false;
+
+    #[ORM\ManyToOne(inversedBy: 'medias')]
+    #[Groups('mediaRound')]
+    private ?Round $round = null;
+
+    #[ORM\ManyToOne(inversedBy: 'medias')]
+    #[ORM\JoinColumn(nullable: false)]
+    #[Groups('mediaPerson')]
+    private ?Person $person = null;
 
     public function getId(): ?int
     {
         return $this->id;
     }
 
-    public function getType(): ?string
+    public function getInsuranceFilePath(): ?string
     {
-        return $this->type;
+        return $this->insuranceFilePath;
     }
 
-    public function setType(string $type): static
+    public function setInsuranceFilePath(string $insuranceFilePath): static
     {
-        $this->type = $type;
+        $this->insuranceFilePath = $insuranceFilePath;
 
         return $this;
     }
 
-    public function getFilePath(): ?string
+    public function getBookFilePath(): ?string
     {
-        return $this->filePath;
+        return $this->bookFilePath;
     }
 
-    public function setFilePath(string $filePath): static
+    public function setBookFilePath(?string $bookFilePath): static
     {
-        $this->filePath = $filePath;
+        $this->bookFilePath = $bookFilePath;
 
         return $this;
     }
 
-    public function getFile(): ?File
+    public function getPilotFollow(): ?string
     {
-        return $this->file;
+        return $this->pilotFollow;
     }
 
-    public function setFile(File $file): static
+    public function setPilotFollow(?string $pilotFollow): static
     {
-        $this->file = $file;
+        $this->pilotFollow = $pilotFollow;
 
         return $this;
     }
 
-    public function getAlt(): ?string
+    public function isSelected(): ?bool
     {
-        return $this->alt;
+        return $this->selected;
     }
 
-    public function setAlt(?string $alt): static
+    public function setSelected(bool $selected): static
     {
-        $this->alt = $alt;
+        $this->selected = $selected;
 
         return $this;
     }
 
-    public function getAuthor(): ?string
+    public function isSelectedMailSent(): ?bool
     {
-        return $this->author;
+        return $this->selectedMailSent;
     }
 
-    public function setAuthor(?string $author): static
+    public function setSelectedMailSent(bool $selectedMailSent): static
     {
-        $this->author = $author;
+        $this->selectedMailSent = $selectedMailSent;
 
         return $this;
     }
 
-    public function getAbout(): ?string
+    public function isELearningMailSent(): ?bool
     {
-        return $this->about;
+        return $this->eLearningMailSent;
     }
 
-    public function setAbout(?string $about): static
+    public function setELearningMailSent(bool $eLearningMailSent): static
     {
-        $this->about = $about;
+        $this->eLearningMailSent = $eLearningMailSent;
 
         return $this;
     }
 
-    public function getCreatedAt(): ?\DateTimeImmutable
+    public function isBriefingSeen(): ?bool
     {
-        return $this->createdAt;
+        return $this->briefingSeen;
     }
 
-    public function setCreatedAt(\DateTimeImmutable $createdAt): static
+    public function setBriefingSeen(bool $briefingSeen): static
     {
-        $this->createdAt = $createdAt;
+        $this->briefingSeen = $briefingSeen;
 
         return $this;
     }
 
-    public function getUpdatedAt(): ?\DateTimeImmutable
+    public function isGeneratePass(): ?bool
     {
-        return $this->updatedAt;
+        return $this->generatePass;
     }
 
-    public function setUpdatedAt(\DateTimeImmutable $updatedAt): static
+    public function setGeneratePass(bool $generatePass): static
     {
-        $this->updatedAt = $updatedAt;
+        $this->generatePass = $generatePass;
+
+        return $this;
+    }
+
+    public function getRound(): ?Round
+    {
+        return $this->round;
+    }
+
+    public function setRound(?Round $round): static
+    {
+        $this->round = $round;
+
+        return $this;
+    }
+
+    public function getPerson(): ?Person
+    {
+        return $this->person;
+    }
+
+    public function setPerson(?Person $person): static
+    {
+        $this->person = $person;
 
         return $this;
     }

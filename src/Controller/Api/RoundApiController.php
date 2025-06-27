@@ -20,6 +20,6 @@ class RoundApiController extends AbstractController
     {
         $rounds = $roundBusiness->getRounds($event);
 
-        return $this->json($rounds, 200, [], ['groups' => ['round', 'roundEvent', 'event']]);
+        return $this->json($rounds, 200, [], ['groups' => ['round', 'roundEvent', 'event', 'roundDetails', 'roundDetail']]);
     }
 }

@@ -2,33 +2,29 @@
 
 namespace App\Entity;
 
-use App\Repository\RoundDetailRepository;
+use App\Repository\PersonTypeRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Serializer\Attribute\Groups;
 
-#[ORM\Entity(repositoryClass: RoundDetailRepository::class)]
-class RoundDetail
+#[ORM\Entity(repositoryClass: PersonTypeRepository::class)]
+class PersonType
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
-    #[Groups(['roundDetail'])]
+    #[Groups('personType')]
     private ?int $id = null;
 
     #[ORM\Column(length: 255)]
-    #[Groups(['roundDetail'])]
+    #[Groups('personType')]
     private ?string $name = null;
-
-    #[ORM\ManyToOne(inversedBy: 'roundDetails')]
-    #[ORM\JoinColumn(nullable: false)]
-    private ?Round $round = null;
 
     /**
      * @var Collection<int, Person>
      */
-    #[ORM\ManyToMany(targetEntity: Person::class, mappedBy: 'roundDetails')]
+    #[ORM\OneToMany(targetEntity: Person::class, mappedBy: 'personType')]
     private Collection $people;
 
     public function __construct()
@@ -53,18 +49,6 @@ class RoundDetail
         return $this;
     }
 
-    public function getRound(): ?Round
-    {
-        return $this->round;
-    }
-
-    public function setRound(?Round $round): static
-    {
-        $this->round = $round;
-
-        return $this;
-    }
-
     /**
      * @return Collection<int, Person>
      */
@@ -77,7 +61,7 @@ class RoundDetail
     {
         if (!$this->people->contains($person)) {
             $this->people->add($person);
-            $person->addRoundDetail($this);
+            $person->setPersonType($this);
         }
 
         return $this;
@@ -86,7 +70,10 @@ class RoundDetail
     public function removePerson(Person $person): static
     {
         if ($this->people->removeElement($person)) {
-            $person->removeRoundDetail($this);
+            // set the owning side to null (unless already changed)
+            if ($person->getPersonType() === $this) {
+                $person->setPersonType(null);
+            }
         }
 
         return $this;

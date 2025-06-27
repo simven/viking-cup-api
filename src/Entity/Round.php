@@ -30,6 +30,7 @@ class Round
      * @var Collection<int, RoundDetail>
      */
     #[ORM\OneToMany(targetEntity: RoundDetail::class, mappedBy: 'round', orphanRemoval: true)]
+    #[Groups(['roundDetails'])]
     private Collection $roundDetails;
 
     /**
@@ -52,11 +53,25 @@ class Round
     #[ORM\OneToMany(targetEntity: RoundCategory::class, mappedBy: 'round')]
     private Collection $roundCategories;
 
+    /**
+     * @var Collection<int, Person>
+     */
+    #[ORM\ManyToMany(targetEntity: Person::class, mappedBy: 'rounds')]
+    private Collection $people;
+
+    /**
+     * @var Collection<int, Media>
+     */
+    #[ORM\OneToMany(targetEntity: Media::class, mappedBy: 'round')]
+    private Collection $medias;
+
     public function __construct()
     {
         $this->roundDetails = new ArrayCollection();
         $this->pilotRoundCategories = new ArrayCollection();
         $this->roundCategories = new ArrayCollection();
+        $this->people = new ArrayCollection();
+        $this->medias = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -196,6 +211,63 @@ class Round
             // set the owning side to null (unless already changed)
             if ($roundCategory->getRound() === $this) {
                 $roundCategory->setRound(null);
+            }
+        }
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, Person>
+     */
+    public function getPeople(): Collection
+    {
+        return $this->people;
+    }
+
+    public function addPerson(Person $person): static
+    {
+        if (!$this->people->contains($person)) {
+            $this->people->add($person);
+            $person->addRound($this);
+        }
+
+        return $this;
+    }
+
+    public function removePerson(Person $person): static
+    {
+        if ($this->people->removeElement($person)) {
+            $person->removeRound($this);
+        }
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, Media>
+     */
+    public function getMedias(): Collection
+    {
+        return $this->medias;
+    }
+
+    public function addMedia(Media $media): static
+    {
+        if (!$this->medias->contains($media)) {
+            $this->medias->add($media);
+            $media->setRound($this);
+        }
+
+        return $this;
+    }
+
+    public function removeMedia(Media $media): static
+    {
+        if ($this->medias->removeElement($media)) {
+            // set the owning side to null (unless already changed)
+            if ($media->getRound() === $this) {
+                $media->setRound(null);
             }
         }
 

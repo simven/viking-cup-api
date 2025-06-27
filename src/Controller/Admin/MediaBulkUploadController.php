@@ -2,7 +2,7 @@
 
 namespace App\Controller\Admin;
 
-use App\Entity\Media;
+use App\Entity\MediaFile;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
@@ -34,7 +34,7 @@ class MediaBulkUploadController extends AbstractController
 
         foreach ($files as $file) {
             if ($file instanceof UploadedFile) {
-                $media = new Media();
+                $media = new MediaFile();
                 $media->setFile($file);
                 $media->setType(str_starts_with($file->getMimeType(), 'image/') ? 'img' : 'video');
 
