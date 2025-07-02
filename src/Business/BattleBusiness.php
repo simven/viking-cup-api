@@ -54,6 +54,10 @@ readonly class BattleBusiness
 
         $qualifyingRanking = $this->getBattleQualifier($category, $qualifyingRanking);
 
+        if (empty($qualifyingRanking)) {
+            throw new Exception('Aucun pilote qualifié pour cette catégorie.');
+        }
+
         foreach ($battleVersus as $versus) {
             /** @var Pilot $pilot1 */
             $pilot1 = $qualifyingRanking[$versus->getPilotQualifPosition1() -1]['pilot'] ?? null;
@@ -64,6 +68,7 @@ readonly class BattleBusiness
             $pilotRoundCategory2 = $pilot2?->getPilotRoundCategories()->filter(fn(PilotRoundCategory $pilotRoundCategory) => $pilotRoundCategory->getRound()->getId() === $round->getId() && $pilotRoundCategory->getCategory()->getId() === $category->getId() && $pilotRoundCategory->isCompeting() === true && $pilotRoundCategory->isEngaged() === true)->first();
             $pilotRoundCategory2 = $pilotRoundCategory2 !== false ? $pilotRoundCategory2 : null;
 
+            // cas double monte
             if ($pilotRoundCategory1 !== null && $pilotRoundCategory2 !== null) {
                 if ($pilotRoundCategory1->getSecondPilot()?->getId() === $pilotRoundCategory2->getPilot()->getId() ||
                     $pilotRoundCategory2->getSecondPilot()?->getId() === $pilotRoundCategory1->getPilot()->getId()) {
@@ -79,16 +84,12 @@ readonly class BattleBusiness
                 }
             }
 
+            // cas classique
             $battle = new Battle();
             $battle->setPilotRoundCategory1($pilotRoundCategory1)
                 ->setPilotRoundCategory2($pilotRoundCategory2)
                 ->setPassage(1);
 
-            // if one of versus is null, so the other is the winner
-            if ($pilot1 === null || $pilot2 === null) {
-                $winner = $pilotRoundCategory1 ?? $pilotRoundCategory2;
-                $battle->setWinner($winner);
-            }
             $this->em->persist($battle);
         }
 
@@ -134,16 +135,7 @@ readonly class BattleBusiness
             throw new Exception("Le tour suivant a déjà été généré !");
         }
 
-        $battles = $this->battleRepository->getBattleVersus($round, $category, $passage);
-        $winners = array_filter($battles, fn(Battle $battle) => $battle->getWinner() !== null || ($battle->getPilotRoundCategory1() === null && $battle->getPilotRoundCategory2() === null));
-
-        if (count($battles) !== count($winners)) {
-            throw new Exception("Impossible de générer le tour suivant, il manque des gagnants !");
-        }
-
-        if (count($winners) === 1) {
-            return;
-        }
+        $winners = $this->battleRepository->getBattleVersus($round, $category, $passage);
 
         if ($nextPassage === 5) {
             $this->generateThirdPlacePlayoff($winners, $nextPassage + 1);
@@ -164,22 +156,17 @@ readonly class BattleBusiness
                 ->setPilotRoundCategory2($winner2)
                 ->setPassage($nextPassage);
 
-            if ($winner1 === null || $winner2 === null) {
-                $winner = $winner1 ?? $winner2;
-                $battle->setWinner($winner);
-            }
-
             $this->em->persist($battle);
         }
 
         $this->em->flush();
     }
 
-    public function setBattleWinner(Battle $battle, PilotRoundCategory $winner): void
+    public function setBattleWinner(Round $round, Category $category, Battle $battle, ?PilotRoundCategory $winner): void
     {
         if ($battle->getWinner() !== null) {
             $nextPassage = $battle->getPassage() + 1;
-            $nextBattles = $this->battleRepository->getBattleVersus($winner->getRound(), $winner->getCategory(), $nextPassage);
+            $nextBattles = $this->battleRepository->getBattleVersus($round, $category, $nextPassage);
 
             foreach ($nextBattles as $nextBattle) {
                 if ($battle->getWinner() === $nextBattle->getPilotRoundCategory1()) {
@@ -267,14 +254,6 @@ readonly class BattleBusiness
         $maxPassage = $this->battleRepository->getMaxPassage($round, $category);
         if ($maxPassage < 6) {
             return false;
-        }
-
-        $battles = $this->battleRepository->getBattleVersus($round, $category);
-
-        foreach ($battles as $battle) {
-            if ($battle->getWinner() === null) {
-                return false;
-            }
         }
 
         return true;
