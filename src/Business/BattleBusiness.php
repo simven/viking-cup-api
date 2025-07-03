@@ -74,8 +74,8 @@ readonly class BattleBusiness
                     $pilotRoundCategory2->getSecondPilot()?->getId() === $pilotRoundCategory1->getPilot()->getId()) {
 
                     $battle = new Battle();
-                    $battle->setPilotRoundCategory1($pilotRoundCategory1)
-                        ->setPilotRoundCategory2($pilotRoundCategory2)
+                        $battle->setLeader($pilotRoundCategory1)
+                        ->setChaser($pilotRoundCategory2)
                         ->setWinner($pilotRoundCategory1->isMainPilot() ? $pilotRoundCategory1 : $pilotRoundCategory2)
                         ->setPassage(1);
                     $this->em->persist($battle);
@@ -86,8 +86,8 @@ readonly class BattleBusiness
 
             // cas classique
             $battle = new Battle();
-            $battle->setPilotRoundCategory1($pilotRoundCategory1)
-                ->setPilotRoundCategory2($pilotRoundCategory2)
+            $battle->setLeader($pilotRoundCategory1)
+                ->setChaser($pilotRoundCategory2)
                 ->setPassage(1);
 
             $this->em->persist($battle);
@@ -138,7 +138,7 @@ readonly class BattleBusiness
         $winners = $this->battleRepository->getBattleVersus($round, $category, $passage);
 
         if ($nextPassage === 5) {
-            $this->generateThirdPlacePlayoff($winners, $nextPassage + 1);
+            $this->generateThirdPlacePlayoff($round,$category, $winners, $nextPassage + 1);
         }
 
         for ($i = 0; $i < count($winners); $i += 2) {
@@ -152,8 +152,8 @@ readonly class BattleBusiness
             }
 
             $battle = new Battle();
-            $battle->setPilotRoundCategory1($winner1)
-                ->setPilotRoundCategory2($winner2)
+            $battle->setLeader($winner1)
+                ->setChaser($winner2)
                 ->setPassage($nextPassage);
 
             $this->em->persist($battle);
@@ -169,11 +169,11 @@ readonly class BattleBusiness
             $nextBattles = $this->battleRepository->getBattleVersus($round, $category, $nextPassage);
 
             foreach ($nextBattles as $nextBattle) {
-                if ($battle->getWinner() === $nextBattle->getPilotRoundCategory1()) {
-                    $nextBattle->setPilotRoundCategory1($winner);
+                if ($battle->getWinner() === $nextBattle->getLeader()) {
+                    $nextBattle->setLeader($winner);
                     $this->em->persist($nextBattle);
-                } elseif ($battle->getWinner() === $nextBattle->getPilotRoundCategory2()) {
-                    $nextBattle->setPilotRoundCategory2($winner);
+                } elseif ($battle->getWinner() === $nextBattle->getChaser()) {
+                    $nextBattle->setChaser($winner);
                     $this->em->persist($nextBattle);
                 }
             }
@@ -233,17 +233,33 @@ readonly class BattleBusiness
         return $battlesRanking;
     }
 
-    private function generateThirdPlacePlayoff(array $winners, int $passage): void
+    private function generateThirdPlacePlayoff(Round $round, Category $category, array $winners, int $passage): void
     {
-        $losers = array_map(fn(Battle $battle) => $battle->getWinner() === $battle->getPilotRoundCategory1() ? $battle->getPilotRoundCategory2() : $battle->getPilotRoundCategory1(), $winners);
+        $losers = array_map(fn(Battle $battle) => $battle->getWinner() === $battle->getLeader() ? $battle->getChaser() : $battle->getLeader(), $winners);
 
         if (count($losers) !== 2) {
             return;
         }
 
+        $qualifyingRanking = $this->qualifyingBusiness->getQualifyingRanking($round, $category);
+
+        $rankingMap = [];
+        foreach ($qualifyingRanking as $rank) {
+            if (isset($rank['pilot'])) {
+                $rankingMap[$rank['pilot']->getId()] = $rank['position'];
+            }
+        }
+
+        usort($losers, function (PilotRoundCategory $loser1, PilotRoundCategory $loser2) use ($rankingMap) {
+            $position1 = $rankingMap[$loser1->getPilot()->getId()] ?? PHP_INT_MAX;
+            $position2 = $rankingMap[$loser2->getPilot()->getId()] ?? PHP_INT_MAX;
+
+            return $position1 <=> $position2;
+        });
+
         $battle = new Battle();
-        $battle->setPilotRoundCategory1($losers[0])
-            ->setPilotRoundCategory2($losers[1])
+        $battle->setLeader($losers[0])
+            ->setChaser($losers[1])
             ->setPassage($passage);
 
         $this->em->persist($battle);
