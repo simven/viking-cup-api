@@ -29,7 +29,7 @@ class BattleApiController extends AbstractController
 
         $battleVersus = $battleBusiness->getBattleVersus($round, $category);
 
-        return $this->json($battleVersus, 200, [], ['groups' => ['battle', 'battlePilotRoundCategory1', 'battlePilotRoundCategory2', 'battleWinner', 'pilotRoundCategory', 'pilotRoundCategoryPilot', 'pilot', 'pilotEvents', 'pilotEvent', 'pilotEventEvent', 'event']]);
+        return $this->json($battleVersus, 200, [], ['groups' => ['battle', 'battleLeader', 'battleChaser', 'battleWinner', 'pilotRoundCategory', 'pilotRoundCategoryPilot', 'pilot', 'pilotEvents', 'pilotEvent', 'pilotEventEvent', 'event']]);
     }
 
     #[Route('/reset', name: 'reset_battle', methods: ['POST'])]
