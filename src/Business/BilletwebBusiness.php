@@ -145,13 +145,12 @@ class BilletwebBusiness
     {
         $billetweb = $this->billetwebRepository->find($billetwebDto->id);
 
-        if ($billetweb !== null) {
-            return $billetweb;
+        if ($billetweb === null) {
+            $billetweb = new BilletwebTicket();
+            $billetweb->setId($billetwebDto->id);
         }
 
-        $billetweb = new BilletwebTicket();
-        $billetweb->setId($billetwebDto->id)
-            ->setTicketNumber($billetwebDto->extId)
+        $billetweb->setTicketNumber($billetwebDto->extId)
             ->setBarcode($billetwebDto->barcode)
             ->setCreationDate(new \DateTime($billetwebDto->orderDate))
             ->setTicketLabel($billetwebDto->ticket)
@@ -209,14 +208,14 @@ class BilletwebBusiness
                 continue;
             }
 
-            if ($mainPilot->getId() === $doubleMountingTicket['pilot']->getId() && isset($pilotAssociation[$doubleMountingTicket['pilot']->getId()])) {
+            if ($mainPilot->getId() === $doubleMountingTicket['pilot']->getId()) {
                 $this->createPilotRoundCategory(
                     $doubleMountingTicket['pilot'],
                     $doubleMountingTicket['round'],
                     $doubleMountingTicket['category'],
                     $doubleMountingTicket['vehicle'],
                     true,
-                    $pilotAssociation[$doubleMountingTicket['pilot']->getId()]
+                    $pilotAssociation[$doubleMountingTicket['pilot']->getId()] ?? null
                 );
             }
         }
@@ -232,12 +231,12 @@ class BilletwebBusiness
                 ->setRound($round)
                 ->setCategory($category)->setVehicle($vehicle)
                 ->setMainPilot($isMainPilot)
-                ->setSecondPilot($secondPilot)
                 ->setIsEngaged(true)
                 ->setIsCompeting(true);
 
-            $this->em->persist($pilotRoundCategory);
         }
+        $pilotRoundCategory->setSecondPilot($secondPilot);
+        $this->em->persist($pilotRoundCategory);
 
         for ($i = 1; $i < 3; $i++) {
             $qualifying = $this->qualifyingRepository->findOneBy(['pilotRoundCategory' => $pilotRoundCategory, 'passage' => $i]);
