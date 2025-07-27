@@ -59,10 +59,6 @@ class Person
     #[Groups('person')]
     private ?string $role = null;
 
-    #[ORM\Column(nullable: true)]
-    #[Groups('person')]
-    private ?int $mark = null;
-
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     #[Groups('person')]
     private ?string $comment = null;
@@ -271,18 +267,6 @@ class Person
     public function setRole(?string $role): static
     {
         $this->role = $role;
-
-        return $this;
-    }
-
-    public function getMark(): ?int
-    {
-        return $this->mark;
-    }
-
-    public function setMark(?int $mark): static
-    {
-        $this->mark = $mark;
 
         return $this;
     }
