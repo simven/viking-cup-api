@@ -37,10 +37,17 @@ class Event
     #[ORM\OneToMany(targetEntity: PilotEvent::class, mappedBy: 'event', orphanRemoval: true)]
     private Collection $pilotEvents;
 
+    /**
+     * @var Collection<int, PilotNumberCounter>
+     */
+    #[ORM\OneToMany(targetEntity: PilotNumberCounter::class, mappedBy: 'event')]
+    private Collection $pilotNumberCounters;
+
     public function __construct()
     {
         $this->rounds = new ArrayCollection();
         $this->pilotEvents = new ArrayCollection();
+        $this->pilotNumberCounters = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -126,6 +133,36 @@ class Event
             // set the owning side to null (unless already changed)
             if ($pilotEvent->getEvent() === $this) {
                 $pilotEvent->setEvent(null);
+            }
+        }
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, PilotNumberCounter>
+     */
+    public function getPilotNumberCounters(): Collection
+    {
+        return $this->pilotNumberCounters;
+    }
+
+    public function addPilotNumberCounter(PilotNumberCounter $pilotNumberCounter): static
+    {
+        if (!$this->pilotNumberCounters->contains($pilotNumberCounter)) {
+            $this->pilotNumberCounters->add($pilotNumberCounter);
+            $pilotNumberCounter->setEvent($this);
+        }
+
+        return $this;
+    }
+
+    public function removePilotNumberCounter(PilotNumberCounter $pilotNumberCounter): static
+    {
+        if ($this->pilotNumberCounters->removeElement($pilotNumberCounter)) {
+            // set the owning side to null (unless already changed)
+            if ($pilotNumberCounter->getEvent() === $this) {
+                $pilotNumberCounter->setEvent(null);
             }
         }
 
