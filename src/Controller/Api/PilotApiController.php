@@ -3,6 +3,7 @@
 namespace App\Controller\Api;
 
 use App\Business\PilotBusiness;
+use App\Dto\CreatePilotDto;
 use App\Dto\PilotDto;
 use App\Entity\Pilot;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -50,21 +51,21 @@ class PilotApiController extends AbstractController
             $nationality
         );
 
-        return $this->json($pilots, Response::HTTP_OK, [], ['groups' => ['pilot', 'pilotPilotRoundCategories', 'pilotRoundCategory', 'pilotRoundCategoryRound', 'pilotRoundCategoryCategory', 'category', 'personPilot', 'person', 'personPersonType', 'personType', 'personRounds', 'round', 'roundEvent', 'event', 'pilotEvents', 'pilotEvent', 'pilotEventEvent', 'personRoundDetails', 'roundDetail', 'personLinks', 'link', 'linkLinkType', 'linkType']]);
+        return $this->json($pilots, Response::HTTP_OK, [], ['groups' => ['pilot', 'pilotPilotRoundCategories', 'pilotRoundCategory', 'pilotRoundCategoryRound', 'pilotRoundCategoryCategory', 'category', 'personPilot', 'person', 'personRounds', 'round', 'roundEvent', 'event', 'pilotEvents', 'pilotEvent', 'pilotEventEvent', 'personRoundDetails', 'roundDetail', 'personLinks', 'link', 'linkLinkType', 'linkType']]);
     }
 
     #[Route('', name: 'create', methods: ['POST'])]
     public function createPilot(
         PilotBusiness $pilotBusiness,
-        #[MapRequestPayload] PilotDto $pilotDto
+        #[MapRequestPayload] CreatePilotDto $pilotDto
     ): Response
     {
-        $pilotBusiness->createPersonPilot($pilotDto);
+        $pilotBusiness->createPilot($pilotDto);
 
         return new Response();
     }
 
-    #[Route('/{pilot}', name: 'update', methods: ['POST'])]
+    #[Route('/{pilot}', name: 'update', methods: ['PUT'])]
     public function updatePilot(
         PilotBusiness $pilotBusiness,
         Pilot $pilot,

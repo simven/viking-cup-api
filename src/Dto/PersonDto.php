@@ -2,7 +2,7 @@
 
 namespace App\Dto;
 
-class MemberDto
+class PersonDto
 {
     public function __construct(
         public string $firstName,
@@ -13,8 +13,10 @@ class MemberDto
         public ?string $city = null,
         public ?string $zipCode = null,
         public ?string $country = null,
-        public ?string $roleAsso = null,
-        public ?string $roleVcup = null
+        public ?string $instagram = null,
+        public ?string $comment = null,
+        public int $warnings = 0,
+        public array $presence = []
     )
     {}
 }

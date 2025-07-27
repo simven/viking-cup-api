@@ -40,7 +40,7 @@ class MemberApiController extends AbstractController
             $roleVcup
         );
 
-        return $this->json($members, Response::HTTP_OK, [], ['groups' => ['member', 'personMember', 'person', 'personPersonType', 'personType', 'personRoundDetails', 'roundDetail', 'personLinks', 'link', 'linkLinkType', 'linkType']]);
+        return $this->json($members, Response::HTTP_OK, [], ['groups' => ['member', 'personMember', 'person', 'personRoundDetails', 'roundDetail', 'personLinks', 'link', 'linkLinkType', 'linkType']]);
     }
 
     #[Route('', name: 'create', methods: ['POST'])]
@@ -54,7 +54,7 @@ class MemberApiController extends AbstractController
         return new Response();
     }
 
-    #[Route('/{member}', name: 'update', methods: ['POST'])]
+    #[Route('/{member}', name: 'update', methods: ['PUT'])]
     public function updateMember(
         MemberBusiness $memberBusiness,
         Member $member,

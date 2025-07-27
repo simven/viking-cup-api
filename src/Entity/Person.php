@@ -19,10 +19,6 @@ class Person
     #[Groups('person')]
     private ?int $id = null;
 
-    #[ORM\ManyToOne(inversedBy: 'people')]
-    #[Groups('personPersonType')]
-    private ?PersonType $personType = null;
-
     #[ORM\Column(length: 255)]
     #[Groups('person')]
     private ?string $firstName = null;
@@ -157,18 +153,6 @@ class Person
     public function getId(): ?int
     {
         return $this->id;
-    }
-
-    public function getPersonType(): ?PersonType
-    {
-        return $this->personType;
-    }
-
-    public function setPersonType(?PersonType $personType): static
-    {
-        $this->personType = $personType;
-
-        return $this;
     }
 
     public function getFirstName(): ?string

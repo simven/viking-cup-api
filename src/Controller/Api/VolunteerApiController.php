@@ -3,6 +3,7 @@
 namespace App\Controller\Api;
 
 use App\Business\VolunteerBusiness;
+use App\Dto\CreateVolunteerDto;
 use App\Dto\VolunteerDto;
 use App\Entity\Volunteer;
 use App\Entity\Round;
@@ -46,19 +47,18 @@ class VolunteerApiController extends AbstractController
         return $this->json($volunteers, Response::HTTP_OK, [], ['groups' => ['volunteer', 'volunteerRound', 'round', 'roundDetails', 'roundDetail', 'roundEvent', 'event']]);
     }
 
-    #[Route('/{round}', name: 'create', methods: ['POST'])]
+    #[Route('', name: 'create', methods: ['POST'])]
     public function createVolunteer(
         VolunteerBusiness $volunteerBusiness,
-        Round $round,
-        #[MapRequestPayload] VolunteerDto $volunteerDto
+        #[MapRequestPayload] CreateVolunteerDto $volunteerDto
     ): Response
     {
-        $volunteerBusiness->createPersonVolunteer($round, $volunteerDto);
+        $volunteerBusiness->createVolunteer($volunteerDto);
 
         return new Response();
     }
 
-    #[Route('/{volunteer}', name: 'update', methods: ['POST'])]
+    #[Route('/{volunteer}', name: 'update', methods: ['PUT'])]
     public function updateVolunteer(
         VolunteerBusiness $volunteerBusiness,
         Volunteer $volunteer,

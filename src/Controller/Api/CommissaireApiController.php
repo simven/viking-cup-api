@@ -4,8 +4,8 @@ namespace App\Controller\Api;
 
 use App\Business\CommissaireBusiness;
 use App\Dto\CommissaireDto;
+use App\Dto\CreateCommissaireDto;
 use App\Entity\Commissaire;
-use App\Entity\Round;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
@@ -52,19 +52,18 @@ class CommissaireApiController extends AbstractController
         return $this->json($commissaires, Response::HTTP_OK, [], ['groups' => ['commissaire', 'commissaireRound', 'round', 'roundDetails', 'roundDetail', 'roundEvent', 'event']]);
     }
 
-    #[Route('/{round}', name: 'create', methods: ['POST'])]
+    #[Route('', name: 'create', methods: ['POST'])]
     public function createCommissaire(
         CommissaireBusiness $commissaireBusiness,
-        Round $round,
-        #[MapRequestPayload] CommissaireDto $commissaireDto
+        #[MapRequestPayload] CreateCommissaireDto $commissaireDto
     ): Response
     {
-        $commissaireBusiness->createPersonCommissaire($round, $commissaireDto);
+        $commissaireBusiness->createCommissaire($commissaireDto);
 
         return new Response();
     }
 
-    #[Route('/{commissaire}', name: 'update', methods: ['POST'])]
+    #[Route('/{commissaire}', name: 'update', methods: ['PUT'])]
     public function updateCommissaire(
         CommissaireBusiness $commissaireBusiness,
         Commissaire $commissaire,

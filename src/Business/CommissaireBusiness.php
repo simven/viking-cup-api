@@ -3,14 +3,14 @@
 namespace App\Business;
 
 use App\Dto\CommissaireDto;
+use App\Dto\CreateCommissaireDto;
 use App\Entity\Commissaire;
 use App\Entity\Person;
-use App\Entity\PersonType;
-use App\Entity\Round;
 use App\Repository\PersonRepository;
-use App\Repository\PersonTypeRepository;
 use App\Repository\RoundDetailRepository;
+use App\Repository\RoundRepository;
 use Doctrine\ORM\EntityManagerInterface;
+use Exception;
 use Pagerfanta\Doctrine\ORM\QueryAdapter;
 use Pagerfanta\Pagerfanta;
 use Symfony\Component\Serializer\SerializerInterface;
@@ -18,8 +18,8 @@ use Symfony\Component\Serializer\SerializerInterface;
 readonly class CommissaireBusiness
 {
     public function __construct(
-        private PersonTypeRepository   $personTypeRepository,
         private PersonRepository       $personRepository,
+        private RoundRepository        $roundRepository,
         private RoundDetailRepository  $roundDetailRepository,
         private SerializerInterface    $serializer,
         private EntityManagerInterface $em
@@ -54,7 +54,7 @@ readonly class CommissaireBusiness
         $commissairePersons = [];
         /** @var Person $person */
         foreach ($persons as $person) {
-            $personArray = $this->serializer->normalize($person, 'json', ['groups' => ['person', 'personPersonType', 'personType', 'personRoundDetails', 'roundDetail']]);
+            $personArray = $this->serializer->normalize($person, 'json', ['groups' => ['person', 'personRoundDetails', 'roundDetail']]);
 
             $commissaires = $person->getCommissaires()->filter(function (Commissaire $commissaire) use ($eventId, $roundId, $licenceNumber, $asaCode, $type, $isFlag) {
                 return (!$eventId || $commissaire->getRound()->getEvent()->getId() === $eventId) &&
@@ -82,52 +82,32 @@ readonly class CommissaireBusiness
         ];
     }
 
-    public function createPersonCommissaire(Round $round, CommissaireDto $commissaireDto): void
+    public function createCommissaire(CreateCommissaireDto $commissaireDto): ?Commissaire
     {
-        $personType = $this->personTypeRepository->find(3);
-        $person = $this->createPerson($commissaireDto, $personType, $round);
-
-        $this->createCommissaire($person, $round, $commissaireDto);
-
-        $this->em->flush();
-    }
-
-    public function createPerson(CommissaireDto $commissaireDto, PersonType $personType, Round $round): Person
-    {
-        $person = $this->personRepository->findOneBy(['email' => $commissaireDto->email, 'personType' => $personType]);
-        if ($person === null) {
-            $person = new Person();
-            $person->setEmail($commissaireDto->email)
-                ->setPersonType($personType);
+        $person = $this->personRepository->find($commissaireDto->personId);
+        if ($commissaireDto->personId === null || $person === null) {
+            throw new Exception('Person not found');
         }
 
-        $person->setFirstName($commissaireDto->firstName)
-            ->setLastName($commissaireDto->lastName)
-            ->setPhone($commissaireDto->phone)
-            ->addRound($round);
+        $round = $this->roundRepository->find($commissaireDto->roundId);
+        if ($commissaireDto->roundId === null || $round === null) {
+            throw new Exception('Round not found');
+        }
 
-        $this->updatePersonPresence($person, $commissaireDto->presence);
-
-        $this->em->persist($person);
-
-        return $person;
-    }
-
-    public function createCommissaire(Person $person, Round $round, CommissaireDto $commissaireDto): Commissaire
-    {
         // get round commissaire or create a new one
-        $commissaire = $person->getCommissaires()->filter(fn($commissaire) => $commissaire->getRound()?->getId() === $round->getId())->first();
+        $commissaire = $person->getCommissaires()->filter(fn(Commissaire $commissaire) => $commissaire->getRound()?->getId() === $round->getId())->first();
         if ($commissaire === false) {
             $commissaire = new Commissaire();
             $commissaire->setPerson($person)
                 ->setRound($round);
         }
-        $commissaire->setType($commissaireDto->commissaireType)
+        $commissaire->setType($commissaireDto->type)
             ->setLicenceNumber($commissaireDto->licenceNumber)
             ->setAsaCode($commissaireDto->asaCode)
             ->setIsFlag($commissaireDto->isFlag);
 
         $this->em->persist($commissaire);
+        $this->em->flush();
 
         return $commissaire;
     }
@@ -148,7 +128,7 @@ readonly class CommissaireBusiness
         $this->em->persist($person);
 
         // update commissaire
-        $commissaire->setType($commissaireDto->commissaireType)
+        $commissaire->setType($commissaireDto->type)
             ->setLicenceNumber($commissaireDto->licenceNumber)
             ->setAsaCode($commissaireDto->asaCode)
             ->setIsFlag($commissaireDto->isFlag);
@@ -177,6 +157,10 @@ readonly class CommissaireBusiness
             $roundDetail = $this->roundDetailRepository->find($roundDetailId);
             if ($roundDetail !== null) {
                 $person->addRoundDetail($roundDetail);
+
+                if (!$person->getRounds()->contains($roundDetail->getRound())) {
+                    $person->addRound($roundDetail->getRound());
+                }
             }
         }
     }

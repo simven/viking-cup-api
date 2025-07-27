@@ -12,6 +12,7 @@ use App\Entity\PilotRoundCategory;
 use App\Entity\Qualifying;
 use App\Entity\Round;
 use App\Helper\ConfigHelper;
+use App\Helper\PilotHelper;
 use App\Repository\BilletwebTicketRepository;
 use App\Repository\CategoryRepository;
 use App\Repository\PersonRepository;
@@ -42,6 +43,7 @@ class BilletwebBusiness
         private readonly QualifyingRepository         $qualifyingRepository,
         private readonly BilletwebService             $billetwebService,
         private readonly ConfigHelper                 $configHelper,
+        private readonly PilotHelper                  $pilotHelper,
         private readonly EntityManagerInterface       $em,
         private SerializerInterface                   $serializer
     )
@@ -122,11 +124,7 @@ class BilletwebBusiness
                             ->setEvent($round->getEvent())
                             ->setReceiveWindscreenBand(false);
 
-                        $pilotNumberCounter = $category->getPilotNumberCounter();
-                        $pilotNumber = $pilotNumberCounter->getPilotNumberCounter() + 1;
-                        $pilotNumberCounter->setPilotNumberCounter($pilotNumber);
-                        $this->em->persist($pilotNumberCounter);
-
+                        $pilotNumber = $this->pilotHelper->getPilotNumber($round->getEvent(), $category);
                         $pilotEvent->setPilotNumber($pilotNumber);
 
                         $this->em->persist($pilotEvent);

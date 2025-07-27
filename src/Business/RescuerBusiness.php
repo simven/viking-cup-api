@@ -2,15 +2,15 @@
 
 namespace App\Business;
 
+use App\Dto\CreateRescuerDto;
 use App\Dto\RescuerDto;
 use App\Entity\Rescuer;
 use App\Entity\Person;
-use App\Entity\PersonType;
-use App\Entity\Round;
 use App\Repository\PersonRepository;
-use App\Repository\PersonTypeRepository;
 use App\Repository\RoundDetailRepository;
+use App\Repository\RoundRepository;
 use Doctrine\ORM\EntityManagerInterface;
+use Exception;
 use Pagerfanta\Doctrine\ORM\QueryAdapter;
 use Pagerfanta\Pagerfanta;
 use Symfony\Component\Serializer\SerializerInterface;
@@ -18,8 +18,8 @@ use Symfony\Component\Serializer\SerializerInterface;
 readonly class RescuerBusiness
 {
     public function __construct(
-        private PersonTypeRepository   $personTypeRepository,
         private PersonRepository       $personRepository,
+        private RoundRepository        $roundRepository,
         private RoundDetailRepository  $roundDetailRepository,
         private SerializerInterface    $serializer,
         private EntityManagerInterface $em
@@ -51,7 +51,7 @@ readonly class RescuerBusiness
         $rescuerPersons = [];
         /** @var Person $person */
         foreach ($persons as $person) {
-            $personArray = $this->serializer->normalize($person, 'json', ['groups' => ['person', 'personPersonType', 'personType', 'personRoundDetails', 'roundDetail', 'personLinks', 'link', 'linkLinkType', 'linkType']]);
+            $personArray = $this->serializer->normalize($person, 'json', ['groups' => ['person', 'personRoundDetails', 'roundDetail', 'personLinks', 'link', 'linkLinkType', 'linkType']]);
 
             $rescuers = $person->getRescuers()->filter(function (Rescuer $rescuer) use ($eventId, $roundId, $role) {
                 return (!$eventId || $rescuer->getRound()->getEvent()->getId() === $eventId) &&
@@ -76,41 +76,20 @@ readonly class RescuerBusiness
         ];
     }
 
-    public function createPersonRescuer(Round $round, RescuerDto $rescuerDto): void
+    public function createRescuer(CreateRescuerDto $rescuerDto): ?Rescuer
     {
-        $personType = $this->personTypeRepository->find(5);
-        $person = $this->createPerson($rescuerDto, $personType, $round);
-
-        $this->createRescuer($person, $round, $rescuerDto);
-
-        $this->em->flush();
-    }
-
-    public function createPerson(RescuerDto $rescuerDto, PersonType $personType, Round $round): Person
-    {
-        $person = $this->personRepository->findOneBy(['email' => $rescuerDto->email, 'personType' => $personType]);
-        if ($person === null) {
-            $person = new Person();
-            $person->setEmail($rescuerDto->email)
-                ->setPersonType($personType);
+        $person = $this->personRepository->find($rescuerDto->personId);
+        if ($rescuerDto->personId === null || $person === null) {
+            throw new Exception('Person not found');
         }
 
-        $person->setFirstName($rescuerDto->firstName)
-            ->setLastName($rescuerDto->lastName)
-            ->setPhone($rescuerDto->phone)
-            ->addRound($round);
+        $round = $this->roundRepository->find($rescuerDto->roundId);
+        if ($rescuerDto->roundId === null || $round === null) {
+            throw new Exception('Round not found');
+        }
 
-        $this->updatePersonPresence($person, $rescuerDto->presence);
-
-        $this->em->persist($person);
-
-        return $person;
-    }
-
-    public function createRescuer(Person $person, Round $round, RescuerDto $rescuerDto): Rescuer
-    {
         // get round rescuer or create a new one
-        $rescuer = $person->getRescuers()->filter(fn($rescuer) => $rescuer->getRound()?->getId() === $round->getId())->first();
+        $rescuer = $person->getRescuers()->filter(fn(Rescuer $rescuer) => $rescuer->getRound()?->getId() === $round->getId())->first();
         if ($rescuer === false) {
             $rescuer = new Rescuer();
             $rescuer->setPerson($person)
@@ -119,6 +98,7 @@ readonly class RescuerBusiness
         $rescuer->setRole($rescuerDto->role);
 
         $this->em->persist($rescuer);
+        $this->em->flush();
 
         return $rescuer;
     }

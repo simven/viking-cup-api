@@ -5,9 +5,7 @@ namespace App\Business;
 use App\Dto\MemberDto;
 use App\Entity\Member;
 use App\Entity\Person;
-use App\Entity\PersonType;
 use App\Repository\PersonRepository;
-use App\Repository\PersonTypeRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Pagerfanta\Doctrine\ORM\QueryAdapter;
 use Pagerfanta\Pagerfanta;
@@ -15,7 +13,6 @@ use Pagerfanta\Pagerfanta;
 readonly class MemberBusiness
 {
     public function __construct(
-        private PersonTypeRepository   $personTypeRepository,
         private PersonRepository       $personRepository,
         private EntityManagerInterface $em
     )
@@ -54,26 +51,28 @@ readonly class MemberBusiness
 
     public function createPersonMember(MemberDto $memberDto): void
     {
-        $personType = $this->personTypeRepository->find(2);
-        $person = $this->createPerson($memberDto, $personType);
+        $person = $this->createPerson($memberDto);
 
         $this->createMember($person, $memberDto);
 
         $this->em->flush();
     }
 
-    private function createPerson(MemberDto $memberDto, PersonType $personType): Person
+    private function createPerson(MemberDto $memberDto): Person
     {
-        $person = $this->personRepository->findOneBy(['email' => $memberDto->email, 'personType' => $personType]);
+        $person = $this->personRepository->findBy(['email' => $memberDto->email])[0] ?? null;
         if ($person === null) {
             $person = new Person();
-            $person->setEmail($memberDto->email)
-                ->setPersonType($personType);
+            $person->setEmail($memberDto->email);
         }
 
         $person->setFirstName($memberDto->firstName)
             ->setLastName($memberDto->lastName)
-            ->setPhone($memberDto->phone);
+            ->setPhone($memberDto->phone)
+            ->setAddress($memberDto->address)
+            ->setCity($memberDto->city)
+            ->setZipCode($memberDto->zipCode)
+            ->setCountry($memberDto->country);
 
         $this->em->persist($person);
 
@@ -105,7 +104,11 @@ readonly class MemberBusiness
         $person->setFirstName($memberDto->firstName)
             ->setLastName($memberDto->lastName)
             ->setEmail($memberDto->email)
-            ->setPhone($memberDto->phone);
+            ->setPhone($memberDto->phone)
+            ->setAddress($memberDto->address)
+            ->setCity($memberDto->city)
+            ->setZipCode($memberDto->zipCode)
+            ->setCountry($memberDto->country);
 
         $this->em->persist($person);
 

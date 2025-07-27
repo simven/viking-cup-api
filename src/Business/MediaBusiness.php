@@ -6,14 +6,12 @@ use App\Dto\MediaDto;
 use App\Dto\MediaSelectionDto;
 use App\Entity\Media;
 use App\Entity\Person;
-use App\Entity\PersonType;
 use App\Entity\Round;
 use App\Helper\FileHelper;
 use App\Helper\EmailHelper;
 use App\Helper\LinkHelper;
 use App\Helper\PdfHelper;
 use App\Repository\PersonRepository;
-use App\Repository\PersonTypeRepository;
 use App\Repository\RoundDetailRepository;
 use App\Repository\RoundRepository;
 use DateTime;
@@ -30,7 +28,6 @@ use Twig\Environment;
 readonly class MediaBusiness
 {
     public function __construct(
-        private PersonTypeRepository   $personTypeRepository,
         private PersonRepository       $personRepository,
         private RoundRepository        $roundRepository,
         private RoundDetailRepository  $roundDetailRepository,
@@ -73,7 +70,7 @@ readonly class MediaBusiness
         $mediaPersons = [];
         /** @var Person $person */
         foreach ($persons as $person) {
-            $personArray = $this->serializer->normalize($person, 'json', ['groups' => ['person', 'personPersonType', 'personType', 'personRoundDetails', 'roundDetail', 'personLinks', 'link', 'linkLinkType', 'linkType']]);
+            $personArray = $this->serializer->normalize($person, 'json', ['groups' => ['person', 'personRoundDetails', 'roundDetail', 'personLinks', 'link', 'linkLinkType', 'linkType']]);
 
             $medias = $person->getMedias()->filter(function (Media $media) use ($generatePass, $briefingSeen, $selectedMailSent, $eLearningMailSent, $selected, $roundId, $eventId) {
                 return (!$eventId || $media->getRound()->getEvent()->getId() === $eventId) &&
@@ -125,28 +122,25 @@ readonly class MediaBusiness
         $now = new DateTime();
         $nextRound = $this->roundRepository->findRoundFromDate($now);
 
-        $personType = $this->personTypeRepository->find(1);
-
-        $person = $this->createPerson($mediaDto, $personType, $nextRound);
+        $person = $this->createPerson($mediaDto, $nextRound);
 
         if (!empty($mediaDto->instagram)) {
             $this->linkHelper->upsertInstagramLink($person, $mediaDto->instagram);
         }
 
-        $this->createMedia($person, $nextRound, $insuranceFile, $bookFile);
+        $this->createMedia($person, $nextRound, $mediaDto->pilotFollow, $insuranceFile, $bookFile);
 
         $this->em->flush();
 
         $this->emailHelper->sendPreselectedEmail($mediaDto->email, $nextRound, $mediaDto->firstName);
     }
 
-    public function createPerson(MediaDto $mediaDto, PersonType $personType, Round $round): Person
+    public function createPerson(MediaDto $mediaDto, Round $round): Person
     {
-        $person = $this->personRepository->findOneBy(['email' => $mediaDto->email, 'personType' => $personType]);
+        $person = $this->personRepository->findOneBy(['email' => $mediaDto->email]);
         if ($person === null) {
             $person = new Person();
-            $person->setEmail($mediaDto->email)
-                ->setPersonType($personType);
+            $person->setEmail($mediaDto->email);
         }
 
         $person->setFirstName($mediaDto->firstName)
@@ -166,7 +160,7 @@ readonly class MediaBusiness
         return $person;
     }
 
-    public function createMedia(Person $person, Round $round, UploadedFile $insuranceFile, ?UploadedFile $bookFile): Media
+    public function createMedia(Person $person, Round $round, ?string $pilotFollow, ?UploadedFile $insuranceFile, ?UploadedFile $bookFile): Media
     {
         // get round media or create new one
         $media = $person->getMedias()->filter(fn($media) => $media->getRound()?->getId() === $round->getId())->first();
@@ -176,14 +170,16 @@ readonly class MediaBusiness
                 ->setRound($round);
         }
 
-        if (!empty($mediaDto->pilotFollow)) {
-            $media->setPilotFollow($mediaDto->pilotFollow);
+        if (!empty($pilotFollow)) {
+            $media->setPilotFollow($pilotFollow);
         }
 
         $path = 'media/' . $round->getId() . '/' . $person->getUniqueId();
 
-        $insuranceFile = $this->fileHelper->saveFile($insuranceFile, $path,  'assurance.' . $insuranceFile->getClientOriginalExtension());
-        $media->setInsuranceFilePath($insuranceFile->getPathname());
+        if ($insuranceFile !== null) {
+            $insuranceFile = $this->fileHelper->saveFile($insuranceFile, $path,  'assurance.' . $insuranceFile->getClientOriginalExtension());
+            $media->setInsuranceFilePath($insuranceFile->getPathname());
+        }
 
         if ($bookFile !== null) {
             $bookFile = $this->fileHelper->saveFile($bookFile, $path, 'book' . $bookFile->getClientOriginalExtension());

@@ -10,12 +10,13 @@ class CommissaireDto
         public string $email,
         public string $phone,
         public ?string $comment = null,
-        public ?string $licenceNumber = null,
-        public ?string $asaCode = null,
-        public ?string $commissaireType = null,
-        public bool $isFlag = false,
         public int $warnings = 0,
         public array $presence = [],
+        public ?int $roundId = null,
+        public ?string $licenceNumber = null,
+        public ?string $asaCode = null,
+        public ?string $type = null,
+        public bool $isFlag = false,
     )
     {}
 }

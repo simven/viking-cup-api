@@ -19,8 +19,8 @@ class PersonRepository extends ServiceEntityRepository
 
     public function findByFirstNameLastName(?string $firstName, ?string $lastName): ?Person
     {
-        $normalizedFirstName = $this->normalizeName($firstName);
-        $normalizedLastName = $this->normalizeName($lastName);
+        $normalizedFirstName = $this->normalize($firstName);
+        $normalizedLastName = $this->normalize($lastName);
 
         $qb = $this->createQueryBuilder('p')
             ->where('LOWER(p.firstName) LIKE :firstName')
@@ -31,6 +31,43 @@ class PersonRepository extends ServiceEntityRepository
         $qb->setMaxResults(1);
 
         return $qb->getQuery()->getOneOrNullResult();
+    }
+
+    public function findPersonsPaginated(
+        ?string $sort = null,
+        ?string $order = null,
+        ?string $person = null
+    ): QueryBuilder
+    {
+        $order = $order ?? 'ASC';
+
+        $qb = $this->createQueryBuilder('p');
+
+        if ($person !== null) {
+            $normalizedPerson = $this->normalize($person);
+            $qb->where('LOWER(p.firstName) LIKE :person')
+                ->orWhere('LOWER(p.lastName) LIKE :person')
+                ->orWhere('LOWER(p.email) LIKE :person')
+                ->orWhere('LOWER(p.phone) LIKE :person')
+                ->setParameter('person', '%' . $normalizedPerson . '%');
+        }
+
+        switch ($sort) {
+            case 'firstName':
+                $qb->orderBy('p.firstName', $order);
+                break;
+            case 'lastName':
+                $qb->orderBy('p.lastName', $order);
+                break;
+            case 'phone':
+                $qb->orderBy('p.phone', $order);
+                break;
+            case 'email':
+                $qb->orderBy('p.email', $order);
+                break;
+        }
+
+        return $qb;
     }
 
     public function findMediasPaginated(
@@ -49,10 +86,7 @@ class PersonRepository extends ServiceEntityRepository
         $order = $order ?? 'ASC';
 
         $qb = $this->createQueryBuilder('p')
-            ->innerJoin('p.personType', 'pt')
-            ->innerJoin('p.medias', 'm')
-            ->andWhere('pt.name = :personType')
-            ->setParameter('personType', 'media');
+            ->innerJoin('p.medias', 'm');
 
         if ($name !== null) {
             $qb->andWhere('p.firstName LIKE :name OR p.lastName LIKE :name')
@@ -123,11 +157,8 @@ class PersonRepository extends ServiceEntityRepository
         $order = $order ?? 'ASC';
 
         $qb = $this->createQueryBuilder('p')
-            ->innerJoin('p.personType', 'pt')
             ->innerJoin('p.pilot', 'pi')
             ->leftJoin('pi.pilotEvents', 'pe', 'WITH', 'pe.event = :event')
-            ->andWhere('pt.name = :personType')
-            ->setParameter('personType', 'pilot')
             ->setParameter('event', $eventId);
 
         if ($name !== null) {
@@ -216,10 +247,7 @@ class PersonRepository extends ServiceEntityRepository
         $order = $order ?? 'ASC';
 
         $qb = $this->createQueryBuilder('p')
-            ->innerJoin('p.personType', 'pt')
-            ->innerJoin('p.member', 'm')
-            ->andWhere('pt.name = :personType')
-            ->setParameter('personType', 'member');
+            ->innerJoin('p.member', 'm');
 
         if ($name !== null) {
             $qb->andWhere('p.firstName LIKE :name OR p.lastName LIKE :name')
@@ -281,10 +309,7 @@ class PersonRepository extends ServiceEntityRepository
         $order = $order ?? 'ASC';
 
         $qb = $this->createQueryBuilder('p')
-            ->innerJoin('p.personType', 'pt')
-            ->innerJoin('p.commissaires', 'c')
-            ->andWhere('pt.name = :personType')
-            ->setParameter('personType', 'commissaire');
+            ->innerJoin('p.commissaires', 'c');
 
         if ($name !== null) {
             $qb->andWhere('p.firstName LIKE :name OR p.lastName LIKE :name')
@@ -357,10 +382,7 @@ class PersonRepository extends ServiceEntityRepository
         $order = $order ?? 'ASC';
 
         $qb = $this->createQueryBuilder('p')
-            ->innerJoin('p.personType', 'pt')
-            ->innerJoin('p.volunteers', 'v')
-            ->andWhere('pt.name = :personType')
-            ->setParameter('personType', 'volunteer');
+            ->innerJoin('p.volunteers', 'v');
 
         if ($name !== null) {
             $qb->andWhere('p.firstName LIKE :name OR p.lastName LIKE :name')
@@ -412,10 +434,7 @@ class PersonRepository extends ServiceEntityRepository
         $order = $order ?? 'ASC';
 
         $qb = $this->createQueryBuilder('p')
-            ->innerJoin('p.personType', 'pt')
-            ->innerJoin('p.rescuers', 'r')
-            ->andWhere('pt.name = :personType')
-            ->setParameter('personType', 'rescuer');
+            ->innerJoin('p.rescuers', 'r');
 
         if ($name !== null) {
             $qb->andWhere('p.firstName LIKE :name OR p.lastName LIKE :name')
@@ -455,9 +474,9 @@ class PersonRepository extends ServiceEntityRepository
         return $qb;
     }
 
-    private function normalizeName(string $name): string
+    private function normalize(string $str): string
     {
-        $normalized = strtolower(trim($name));
+        $normalized = strtolower(trim($str));
         return preg_replace('/\s+/', ' ', $normalized);
     }
 }

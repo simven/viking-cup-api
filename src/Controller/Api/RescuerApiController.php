@@ -3,6 +3,7 @@
 namespace App\Controller\Api;
 
 use App\Business\RescuerBusiness;
+use App\Dto\CreateRescuerDto;
 use App\Dto\RescuerDto;
 use App\Entity\Rescuer;
 use App\Entity\Round;
@@ -46,14 +47,13 @@ class RescuerApiController extends AbstractController
         return $this->json($rescuers, Response::HTTP_OK, [], ['groups' => ['rescuer', 'rescuerRound', 'round', 'roundDetails', 'roundDetail', 'roundEvent', 'event']]);
     }
 
-    #[Route('/{round}', name: 'create', methods: ['POST'])]
+    #[Route('', name: 'create', methods: ['POST'])]
     public function createRescuer(
         RescuerBusiness $rescuerBusiness,
-        Round $round,
-        #[MapRequestPayload] RescuerDto $rescuerDto
+        #[MapRequestPayload] CreateRescuerDto $rescuerDto
     ): Response
     {
-        $rescuerBusiness->createPersonRescuer($round, $rescuerDto);
+        $rescuerBusiness->createRescuer($rescuerDto);
 
         return new Response();
     }
