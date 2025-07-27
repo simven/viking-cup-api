@@ -11,9 +11,10 @@ class PilotDto
         public string  $phone,
         public ?string $comment = null,
         public int     $warnings = 0,
+        public ?int    $number = null,
         public ?bool   $ffsaLicensee = null,
         public ?string $ffsaNumber = null,
-
+        public array   $presence = [],
     )
     {}
 }

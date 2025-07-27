@@ -31,6 +31,7 @@ class PilotApiController extends AbstractController
         #[MapQueryParameter] ?string $number = null,
         #[MapQueryParameter] ?bool   $ffsaLicensee = null,
         #[MapQueryParameter] ?string $ffsaNumber = null,
+        #[MapQueryParameter] ?string $nationality = null,
     ): JsonResponse
     {
         $pilots = $pilotBusiness->getPilots(
@@ -45,7 +46,8 @@ class PilotApiController extends AbstractController
             $categoryId,
             $number,
             $ffsaLicensee,
-            $ffsaNumber
+            $ffsaNumber,
+            $nationality
         );
 
         return $this->json($pilots, Response::HTTP_OK, [], ['groups' => ['pilot', 'pilotPilotRoundCategories', 'pilotRoundCategory', 'pilotRoundCategoryRound', 'pilotRoundCategoryCategory', 'category', 'personPilot', 'person', 'personPersonType', 'personType', 'personRounds', 'round', 'roundEvent', 'event', 'pilotEvents', 'pilotEvent', 'pilotEventEvent', 'personRoundDetails', 'roundDetail', 'personLinks', 'link', 'linkLinkType', 'linkType']]);

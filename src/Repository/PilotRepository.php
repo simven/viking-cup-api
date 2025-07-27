@@ -48,4 +48,10 @@ class PilotRepository extends ServiceEntityRepository
 
         return $qb->getQuery()->getOneOrNullResult();
     }
+
+    private function normalizeName(string $name): string
+    {
+        $normalized = strtolower(trim($name));
+        return preg_replace('/\s+/', ' ', $normalized);
+    }
 }

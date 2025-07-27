@@ -34,10 +34,11 @@ readonly class PilotBusiness
         ?int    $categoryId = null,
         ?string $number = null,
         ?bool   $ffsaLicensee = null,
-        ?string $ffsaNumber = null
+        ?string $ffsaNumber = null,
+        ?string $nationality = null
     ): array
     {
-        $pilotPersonsQuery = $this->personRepository->findPilotsPaginated($sort, $order, $name, $email, $phone, $eventId, $roundId, $categoryId, $number, $ffsaLicensee, $ffsaNumber);
+        $pilotPersonsQuery = $this->personRepository->findPilotsPaginated($sort, $order, $name, $email, $phone, $eventId, $roundId, $categoryId, $number, $ffsaLicensee, $ffsaNumber, $nationality);
 
         $adapter = new QueryAdapter($pilotPersonsQuery, false, false);
         $pager = new Pagerfanta($adapter);

@@ -116,7 +116,8 @@ class PersonRepository extends ServiceEntityRepository
         ?int    $categoryId = null,
         ?string $number = null,
         ?bool   $ffsaLicensee = null,
-        ?string $ffsaNumber = null
+        ?string $ffsaNumber = null,
+        ?string $nationality = null
     ): QueryBuilder
     {
         $order = $order ?? 'ASC';
@@ -165,6 +166,10 @@ class PersonRepository extends ServiceEntityRepository
             $qb->andWhere('pi.ffsaNumber LIKE :ffsaNumber')
                 ->setParameter('ffsaNumber', '%' . $ffsaNumber . '%');
         }
+        if ($nationality !== null) {
+            $qb->andWhere('LOWER(p.nationality) LIKE :nationality')
+                ->setParameter('nationality', '%' . $this->normalizeName($nationality) . '%');
+        }
 
 
         switch ($sort) {
@@ -188,6 +193,9 @@ class PersonRepository extends ServiceEntityRepository
                 break;
             case 'ffsaNumber':
                 $qb->orderBy('pi.ffsaNumber', $order);
+                break;
+            case 'nationality':
+                $qb->orderBy('p.nationality', $order);
                 break;
 
         }
