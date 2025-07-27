@@ -5,6 +5,7 @@ namespace App\Business;
 use App\Dto\BilletwebTicketDto;
 use App\Entity\BilletwebTicket;
 use App\Entity\Category;
+use App\Entity\Person;
 use App\Entity\Pilot;
 use App\Entity\PilotEvent;
 use App\Entity\PilotRoundCategory;
@@ -13,6 +14,7 @@ use App\Entity\Round;
 use App\Helper\ConfigHelper;
 use App\Repository\BilletwebTicketRepository;
 use App\Repository\CategoryRepository;
+use App\Repository\PersonRepository;
 use App\Repository\PilotEventRepository;
 use App\Repository\PilotRepository;
 use App\Repository\PilotRoundCategoryRepository;
@@ -33,6 +35,7 @@ class BilletwebBusiness
         private readonly BilletwebTicketRepository    $billetwebRepository,
         private readonly RoundRepository              $roundRepository,
         private readonly CategoryRepository           $categoryRepository,
+        private readonly PersonRepository             $personRepository,
         private readonly PilotRepository              $pilotRepository,
         private readonly PilotRoundCategoryRepository $pilotRoundCategoryRepository,
         private readonly PilotEventRepository         $pilotEventRepository,
@@ -76,26 +79,40 @@ class BilletwebBusiness
                     $category = $this->categoryRepository->findOneBy(['name' => $billetwebTicket->getCategory()]);
 
                     // Create Pilot Entity
-                    $pilot = $this->pilotRepository->findByFirstNameLastName($billetwebTicket->getPilotFirstName(), $billetwebTicket->getPilotLastName());
+                    $person = $this->personRepository->findByFirstNameLastName($billetwebTicket->getPilotFirstName(), $billetwebTicket->getPilotLastName());
+                    if ($person === null) {
+                        $person = new Person();
+                        $person->setFirstName($billetwebTicket->getPilotFirstName())
+                            ->setLastName($billetwebTicket->getPilotLastName());
+                    }
+
+                    $person->setEmail($billetwebTicket->getPilotEmail())
+                        ->setPhone($billetwebTicket->getCustom()['Portable'] ?? null)
+                        ->setAddress($billetwebTicket->getCustom()['Adresse'] ?? null)
+                        ->setZipCode($billetwebTicket->getCustom()['Code postal'] ?? null)
+                        ->setCity($billetwebTicket->getCustom()['Ville'] ?? null)
+                        ->setCountry($billetwebTicket->getCustom()['Pays'] ?? null)
+                        ->setNationality($billetwebTicket->getCustom()['Nationalité'] ?? null)
+                        ->addRound($round);
+
+                    foreach ($round->getRoundDetails() as $roundDetail) {
+                        $person->addRoundDetail($roundDetail);
+                    }
+
+                    $this->em->persist($person);
+
+                    $pilot = $person->getPilot();
                     if ($pilot === null) {
                         $pilot = new Pilot();
-                        $pilot->setEmail($billetwebTicket->getPilotEmail())
-                            ->setFirstName($billetwebTicket->getPilotFirstName())
-                            ->setLastName($billetwebTicket->getPilotLastName())
-                            ->setPhoneNumber($billetwebTicket->getCustom()['Portable'] ?? null)
-                            ->setAddress($billetwebTicket->getCustom()['Adresse'] ?? null)
-                            ->setZipCode($billetwebTicket->getCustom()['Code postal'] ?? null)
-                            ->setCity($billetwebTicket->getCustom()['Ville'] ?? null)
-                            ->setCountry($billetwebTicket->getCustom()['Pays'] ?? null)
-                            ->setNationality($billetwebTicket->getCustom()['Nationalité'] ?? null)
-                            ->setFfsaLicensee(boolval($billetwebTicket->getCustom()['Etes-vous licencié FFSA ?'] ?? null));
+                        $pilot->setFfsaLicensee(boolval($billetwebTicket->getCustom()['Etes-vous licencié FFSA ?'] ?? null));
 
                         if ($pilot->getCreatedAt() === null && $billetwebTicket->getCreationDate() !== null) {
                             $pilot->setCreatedAt($billetwebTicket->getCreationDate());
                         }
 
-                        echo 'Nouveau pilote : ' . $billetwebTicket->getPilotFirstName() . ' ' . $billetwebTicket->getPilotLastName() . PHP_EOL;
                         $this->em->persist($pilot);
+
+                        echo 'Nouveau pilote : ' . $billetwebTicket->getPilotFirstName() . ' ' . $billetwebTicket->getPilotLastName() . PHP_EOL;
                     }
 
                     $pilotEvent = $this->pilotEventRepository->findOneBy(['pilot' => $pilot, 'event' => $round->getEvent()]);
@@ -145,12 +162,13 @@ class BilletwebBusiness
     {
         $billetweb = $this->billetwebRepository->find($billetwebDto->id);
 
-        if ($billetweb === null) {
-            $billetweb = new BilletwebTicket();
-            $billetweb->setId($billetwebDto->id);
+        if ($billetweb !== null) {
+            return $billetweb;
         }
 
-        $billetweb->setTicketNumber($billetwebDto->extId)
+        $billetweb = new BilletwebTicket();
+        $billetweb->setId($billetwebDto->id)
+            ->setTicketNumber($billetwebDto->extId)
             ->setBarcode($billetwebDto->barcode)
             ->setCreationDate(new \DateTime($billetwebDto->orderDate))
             ->setTicketLabel($billetwebDto->ticket)

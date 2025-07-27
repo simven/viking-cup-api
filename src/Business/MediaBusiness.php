@@ -4,15 +4,14 @@ namespace App\Business;
 
 use App\Dto\MediaDto;
 use App\Dto\MediaSelectionDto;
-use App\Entity\Link;
 use App\Entity\Media;
 use App\Entity\Person;
 use App\Entity\PersonType;
 use App\Entity\Round;
 use App\Helper\FileHelper;
 use App\Helper\EmailHelper;
+use App\Helper\LinkHelper;
 use App\Helper\PdfHelper;
-use App\Repository\LinkTypeRepository;
 use App\Repository\PersonRepository;
 use App\Repository\PersonTypeRepository;
 use App\Repository\RoundDetailRepository;
@@ -33,11 +32,11 @@ readonly class MediaBusiness
     public function __construct(
         private PersonTypeRepository   $personTypeRepository,
         private PersonRepository       $personRepository,
-        private LinkTypeRepository     $linkTypeRepository,
         private RoundRepository        $roundRepository,
         private RoundDetailRepository  $roundDetailRepository,
         private FileHelper             $fileHelper,
         private EmailHelper            $emailHelper,
+        private LinkHelper             $linkHelper,
         private Environment            $twig,
         private SerializerInterface    $serializer,
         private ParameterBagInterface  $parameterBag,
@@ -62,7 +61,7 @@ readonly class MediaBusiness
         ?bool   $generatePass = null
     ): array
     {
-        $persons = $this->personRepository->findAllPaginated($sort, $order, $name, $email, $phone, $selected, $selectedMailSent, $eLearningMailSent, $briefingSeen, $generatePass, 'media');
+        $persons = $this->personRepository->findMediasPaginated($sort, $order, $name, $email, $phone, $selected, $selectedMailSent, $eLearningMailSent, $briefingSeen, $generatePass);
 
         $adapter = new QueryAdapter($persons, false, false);
         $pager = new Pagerfanta($adapter);
@@ -131,7 +130,7 @@ readonly class MediaBusiness
         $person = $this->createPerson($mediaDto, $personType, $nextRound);
 
         if (!empty($mediaDto->instagram)) {
-            $this->upsertInstagramLink($person, $mediaDto->instagram);
+            $this->linkHelper->upsertInstagramLink($person, $mediaDto->instagram);
         }
 
         $this->createMedia($person, $nextRound, $insuranceFile, $bookFile);
@@ -165,24 +164,6 @@ readonly class MediaBusiness
         $this->em->persist($person);
 
         return $person;
-    }
-
-    public function upsertInstagramLink(Person $person, string $instagram): void
-    {
-        if ($person->getLinks()->isEmpty() || $person->getLinks()->filter(fn($link) => $link->getLinkType()->getName() === 'Instagram')->isEmpty()) {
-            $instaLinkType = $this->linkTypeRepository->findOneBy(['name' => 'Instagram']);
-
-            $instaLink = new Link();
-            $instaLink->setLinkType($instaLinkType)
-                ->setUrl(ltrim($instagram, '@'))
-                ->addPerson($person);
-        } else {
-            $instaLink = $person->getLinks()->filter(fn($link) => $link->getLinkType()->getName() === 'Instagram')->first();
-            $instaLink->setUrl(ltrim($instagram, '@'));
-        }
-
-        $this->em->persist($instaLink);
-        $this->em->flush();
     }
 
     public function createMedia(Person $person, Round $round, UploadedFile $insuranceFile, ?UploadedFile $bookFile): Media
@@ -250,7 +231,7 @@ readonly class MediaBusiness
 
         // update instagram link
         if (!empty($mediaDto->instagram)) {
-            $this->upsertInstagramLink($person, $mediaDto->instagram);
+            $this->linkHelper->upsertInstagramLink($person, $mediaDto->instagram);
         }
 
         // update media
