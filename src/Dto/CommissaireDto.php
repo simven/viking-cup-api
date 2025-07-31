@@ -15,7 +15,7 @@ class CommissaireDto
         public ?int $roundId = null,
         public ?string $licenceNumber = null,
         public ?string $asaCode = null,
-        public ?string $type = null,
+        public ?int $typeId = null,
         public bool $isFlag = false,
     )
     {}

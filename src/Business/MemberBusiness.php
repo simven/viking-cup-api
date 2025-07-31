@@ -2,11 +2,13 @@
 
 namespace App\Business;
 
+use App\Dto\CreateMemberDto;
 use App\Dto\MemberDto;
 use App\Entity\Member;
 use App\Entity\Person;
 use App\Repository\PersonRepository;
 use Doctrine\ORM\EntityManagerInterface;
+use Exception;
 use Pagerfanta\Doctrine\ORM\QueryAdapter;
 use Pagerfanta\Pagerfanta;
 
@@ -49,38 +51,13 @@ readonly class MemberBusiness
         ];
     }
 
-    public function createPersonMember(MemberDto $memberDto): void
+    public function createMember(CreateMemberDto $memberDto): Member
     {
-        $person = $this->createPerson($memberDto);
-
-        $this->createMember($person, $memberDto);
-
-        $this->em->flush();
-    }
-
-    private function createPerson(MemberDto $memberDto): Person
-    {
-        $person = $this->personRepository->findBy(['email' => $memberDto->email])[0] ?? null;
-        if ($person === null) {
-            $person = new Person();
-            $person->setEmail($memberDto->email);
+        $person = $this->personRepository->find($memberDto->personId);
+        if ($memberDto->personId === null || $person === null) {
+            throw new Exception('Person not found');
         }
 
-        $person->setFirstName($memberDto->firstName)
-            ->setLastName($memberDto->lastName)
-            ->setPhone($memberDto->phone)
-            ->setAddress($memberDto->address)
-            ->setCity($memberDto->city)
-            ->setZipCode($memberDto->zipCode)
-            ->setCountry($memberDto->country);
-
-        $this->em->persist($person);
-
-        return $person;
-    }
-
-    private function createMember(Person $person, MemberDto $memberDto): Member
-    {
         // get member or create new one
         $member = $person->getMember();
         if ($member === null) {
@@ -92,6 +69,7 @@ readonly class MemberBusiness
             ->setRoleVcup($memberDto->roleVcup);
 
         $this->em->persist($member);
+        $this->em->flush();
 
         return $member;
     }

@@ -33,6 +33,19 @@ class PersonRepository extends ServiceEntityRepository
         return $qb->getQuery()->getOneOrNullResult();
     }
 
+    public function findByEmail(string $email): ?Person
+    {
+        $normalizedEmail = $this->normalize($email);
+
+        $qb = $this->createQueryBuilder('p')
+            ->where('LOWER(p.email) LIKE :email')
+            ->setParameter('email', "%$normalizedEmail%");
+
+        $qb->setMaxResults(1);
+
+        return $qb->getQuery()->getOneOrNullResult();
+    }
+
     public function findPersonsPaginated(
         ?string $sort = null,
         ?string $order = null,
@@ -302,7 +315,7 @@ class PersonRepository extends ServiceEntityRepository
         ?string $phone = null,
         ?string $licenceNumber = null,
         ?string $asaCode = null,
-        ?string $type = null,
+        ?int    $typeId = null,
         ?bool   $isFlag = null
     ): QueryBuilder
     {
@@ -331,9 +344,9 @@ class PersonRepository extends ServiceEntityRepository
             $qb->andWhere('c.asaCode LIKE :asaCode')
                 ->setParameter('asaCode', '%' . $asaCode . '%');
         }
-        if ($type !== null) {
-            $qb->andWhere('c.type LIKE :type')
-                ->setParameter('type', '%' . $type . '%');
+        if ($typeId !== null) {
+            $qb->andWhere('c.type = :typeId')
+                ->setParameter('typeId', $typeId);
         }
         if ($isFlag !== null) {
             $qb->andWhere('c.isFlag = :isFlag')
@@ -360,7 +373,7 @@ class PersonRepository extends ServiceEntityRepository
                 $qb->orderBy('c.asaCode', $order);
                 break;
             case 'type':
-                $qb->orderBy('c.type', $order);
+                $qb->orderBy('ct.type', $order);
                 break;
             case 'isFlag':
                 $qb->orderBy('c.isFlag', $order);
@@ -376,7 +389,7 @@ class PersonRepository extends ServiceEntityRepository
         ?string $name = null,
         ?string $email = null,
         ?string $phone = null,
-        ?string $role = null
+        ?int    $roleId = null
     ): QueryBuilder
     {
         $order = $order ?? 'ASC';
@@ -396,9 +409,9 @@ class PersonRepository extends ServiceEntityRepository
             $qb->andWhere('p.phone LIKE :phone')
                 ->setParameter('phone', '%' . $phone . '%');
         }
-        if ($role !== null) {
-            $qb->andWhere('v.role LIKE :role')
-                ->setParameter('role', '%' . $role . '%');
+        if ($roleId !== null) {
+            $qb->andWhere('v.role = :roleId')
+                ->setParameter('roleId', $roleId);
         }
 
         switch ($sort) {

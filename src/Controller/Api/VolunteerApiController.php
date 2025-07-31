@@ -44,7 +44,7 @@ class VolunteerApiController extends AbstractController
             $role
         );
 
-        return $this->json($volunteers, Response::HTTP_OK, [], ['groups' => ['volunteer', 'volunteerRound', 'round', 'roundDetails', 'roundDetail', 'roundEvent', 'event']]);
+        return $this->json($volunteers, Response::HTTP_OK, [], ['groups' => ['volunteer', 'role', 'volunteerRole', 'volunteerRound', 'round', 'roundDetails', 'roundDetail', 'roundEvent', 'event']]);
     }
 
     #[Route('', name: 'create', methods: ['POST'])]

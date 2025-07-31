@@ -11,6 +11,7 @@ use App\Helper\LinkHelper;
 use App\Repository\PersonRepository;
 use App\Repository\RoundDetailRepository;
 use App\Repository\RoundRepository;
+use App\Repository\VolunteerRoleRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Exception;
 use Pagerfanta\Doctrine\ORM\QueryAdapter;
@@ -23,6 +24,7 @@ readonly class VolunteerBusiness
         private PersonRepository       $personRepository,
         private RoundRepository        $roundRepository,
         private RoundDetailRepository  $roundDetailRepository,
+        private VolunteerRoleRepository $volunteerRoleRepository,
         private LinkHelper             $linkHelper,
         private SerializerInterface    $serializer,
         private EntityManagerInterface $em
@@ -39,10 +41,10 @@ readonly class VolunteerBusiness
         ?string $name = null,
         ?string $email = null,
         ?string $phone = null,
-        ?string $role = null
+        ?int    $roleId = null
     ): array
     {
-        $persons = $this->personRepository->findVolunteersPaginated($sort, $order, $name, $email, $phone, $role);
+        $persons = $this->personRepository->findVolunteersPaginated($sort, $order, $name, $email, $phone, $roleId);
 
         $adapter = new QueryAdapter($persons, false, false);
         $pager = new Pagerfanta($adapter);
@@ -56,10 +58,10 @@ readonly class VolunteerBusiness
         foreach ($persons as $person) {
             $personArray = $this->serializer->normalize($person, 'json', ['groups' => ['person', 'personRoundDetails', 'roundDetail', 'personLinks', 'link', 'linkLinkType', 'linkType']]);
 
-            $volunteers = $person->getVolunteers()->filter(function (Volunteer $volunteer) use ($eventId, $roundId, $role) {
+            $volunteers = $person->getVolunteers()->filter(function (Volunteer $volunteer) use ($eventId, $roundId, $roleId) {
                 return (!$eventId || $volunteer->getRound()->getEvent()->getId() === $eventId) &&
                     (!$roundId || $volunteer->getRound()->getId() === $roundId) &&
-                    (!$role || str_contains($volunteer->getRole(), $role) !== false);
+                    (!$roleId || $volunteer->getRole()?->getId() === $roleId);
             });
 
             $personArray['volunteers'] = array_values($volunteers->toArray());
@@ -91,6 +93,10 @@ readonly class VolunteerBusiness
             throw new Exception('Round not found');
         }
 
+        if (!empty($volunteerDto->roleId)) {
+            $role = $this->volunteerRoleRepository->find($volunteerDto->roleId);
+        }
+
         // get round volunteer or create a new one
         $volunteer = $person->getVolunteers()->filter(fn(Volunteer $volunteer) => $volunteer->getRound()?->getId() === $round->getId())->first();
         if ($volunteer === false) {
@@ -98,7 +104,7 @@ readonly class VolunteerBusiness
             $volunteer->setPerson($person)
                 ->setRound($round);
         }
-        $volunteer->setRole($volunteerDto->role);
+        $volunteer->setRole($role ?? null);
 
         $this->em->persist($volunteer);
         $this->em->flush();
@@ -127,7 +133,10 @@ readonly class VolunteerBusiness
         }
 
         // update volunteer
-        $volunteer->setRole($volunteerDto->role);
+        if (!empty($volunteerDto->roleId)) {
+            $role = $this->volunteerRoleRepository->find($volunteerDto->roleId);
+        }
+        $volunteer->setRole($role ?? null);
 
         $this->em->persist($volunteer);
 

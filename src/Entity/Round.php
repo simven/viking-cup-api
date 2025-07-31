@@ -83,6 +83,12 @@ class Round
     #[ORM\OneToMany(targetEntity: Rescuer::class, mappedBy: 'round')]
     private Collection $rescuers;
 
+    /**
+     * @var Collection<int, Visitor>
+     */
+    #[ORM\OneToMany(targetEntity: Visitor::class, mappedBy: 'round')]
+    private Collection $visitors;
+
     public function __construct()
     {
         $this->roundDetails = new ArrayCollection();
@@ -93,6 +99,7 @@ class Round
         $this->commissaires = new ArrayCollection();
         $this->volunteers = new ArrayCollection();
         $this->rescuers = new ArrayCollection();
+        $this->visitors = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -379,6 +386,36 @@ class Round
             // set the owning side to null (unless already changed)
             if ($rescuer->getRound() === $this) {
                 $rescuer->setRound(null);
+            }
+        }
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, Visitor>
+     */
+    public function getVisitors(): Collection
+    {
+        return $this->visitors;
+    }
+
+    public function addVisitor(Visitor $visitor): static
+    {
+        if (!$this->visitors->contains($visitor)) {
+            $this->visitors->add($visitor);
+            $visitor->setRound($this);
+        }
+
+        return $this;
+    }
+
+    public function removeVisitor(Visitor $visitor): static
+    {
+        if ($this->visitors->removeElement($visitor)) {
+            // set the owning side to null (unless already changed)
+            if ($visitor->getRound() === $this) {
+                $visitor->setRound(null);
             }
         }
 

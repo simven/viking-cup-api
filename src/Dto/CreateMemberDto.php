@@ -2,12 +2,12 @@
 
 namespace App\Dto;
 
-class CreateVolunteerDto
+class CreateMemberDto
 {
     public function __construct(
         public int $personId,
-        public int $roundId,
-        public ?int $roleId = null
+        public ?string $roleAsso = null,
+        public ?string $roleVcup = null
     )
     {}
 }

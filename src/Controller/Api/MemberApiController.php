@@ -3,6 +3,7 @@
 namespace App\Controller\Api;
 
 use App\Business\MemberBusiness;
+use App\Dto\CreateMemberDto;
 use App\Dto\MemberDto;
 use App\Entity\Member;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -46,10 +47,10 @@ class MemberApiController extends AbstractController
     #[Route('', name: 'create', methods: ['POST'])]
     public function createMember(
         MemberBusiness $memberBusiness,
-        #[MapRequestPayload] MemberDto $memberDto
+        #[MapRequestPayload] CreateMemberDto $createMemberDto
     ): Response
     {
-        $memberBusiness->createPersonMember($memberDto);
+        $memberBusiness->createMember($createMemberDto);
 
         return new Response();
     }
