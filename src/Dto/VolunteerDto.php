@@ -12,7 +12,7 @@ class VolunteerDto
         public ?string $instagram = null,
         public ?string $comment = null,
         public int $warnings = 0,
-        public ?string $role = null,
+        public ?int $roleId = null,
         public array $presence = [],
     )
     {}

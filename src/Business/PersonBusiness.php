@@ -61,7 +61,7 @@ readonly class PersonBusiness
             ->setPhone($personDto->phone)
             ->setAddress($personDto->address)
             ->setCity($personDto->city)
-            ->setPostalCode($personDto->zipCode)
+            ->setZipCode($personDto->zipCode)
             ->setCountry($personDto->country)
             ->setWarnings($personDto->warnings)
             ->setComment($personDto->comment);

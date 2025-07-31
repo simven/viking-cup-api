@@ -6,6 +6,7 @@ use App\Dto\CommissaireDto;
 use App\Dto\CreateCommissaireDto;
 use App\Entity\Commissaire;
 use App\Entity\Person;
+use App\Repository\CommissaireTypeRepository;
 use App\Repository\PersonRepository;
 use App\Repository\RoundDetailRepository;
 use App\Repository\RoundRepository;
@@ -21,6 +22,7 @@ readonly class CommissaireBusiness
         private PersonRepository       $personRepository,
         private RoundRepository        $roundRepository,
         private RoundDetailRepository  $roundDetailRepository,
+        private CommissaireTypeRepository $commissaireTypeRepository,
         private SerializerInterface    $serializer,
         private EntityManagerInterface $em
     )
@@ -38,11 +40,11 @@ readonly class CommissaireBusiness
         ?string $phone = null,
         ?string $licenceNumber = null,
         ?string $asaCode = null,
-        ?string $type = null,
+        ?int    $typeId = null,
         ?bool   $isFlag = null
     ): array
     {
-        $persons = $this->personRepository->findCommissairesPaginated($sort, $order, $name, $email, $phone, $licenceNumber, $asaCode, $type, $isFlag);
+        $persons = $this->personRepository->findCommissairesPaginated($sort, $order, $name, $email, $phone, $licenceNumber, $asaCode, $typeId, $isFlag);
 
         $adapter = new QueryAdapter($persons, false, false);
         $pager = new Pagerfanta($adapter);
@@ -56,12 +58,12 @@ readonly class CommissaireBusiness
         foreach ($persons as $person) {
             $personArray = $this->serializer->normalize($person, 'json', ['groups' => ['person', 'personRoundDetails', 'roundDetail']]);
 
-            $commissaires = $person->getCommissaires()->filter(function (Commissaire $commissaire) use ($eventId, $roundId, $licenceNumber, $asaCode, $type, $isFlag) {
+            $commissaires = $person->getCommissaires()->filter(function (Commissaire $commissaire) use ($eventId, $roundId, $licenceNumber, $asaCode, $typeId, $isFlag) {
                 return (!$eventId || $commissaire->getRound()->getEvent()->getId() === $eventId) &&
                     (!$roundId || $commissaire->getRound()->getId() === $roundId) &&
                     (!$licenceNumber || str_contains($commissaire->getLicenceNumber(), $licenceNumber) !== false) &&
                     (!$asaCode || str_contains($commissaire->getAsaCode(), $asaCode) !== false) &&
-                    (!$type || str_contains($commissaire->getType(), $type) !== false) &&
+                    (!$typeId || $commissaire->getType()->getId() === $typeId) &&
                     ($isFlag === null || $commissaire->isFlag() === $isFlag);
             });
 
@@ -94,6 +96,10 @@ readonly class CommissaireBusiness
             throw new Exception('Round not found');
         }
 
+        if (!empty($commissaireDto->typeId)) {
+            $commissaireType = $this->commissaireTypeRepository->find($commissaireDto->typeId);
+        }
+
         // get round commissaire or create a new one
         $commissaire = $person->getCommissaires()->filter(fn(Commissaire $commissaire) => $commissaire->getRound()?->getId() === $round->getId())->first();
         if ($commissaire === false) {
@@ -101,7 +107,8 @@ readonly class CommissaireBusiness
             $commissaire->setPerson($person)
                 ->setRound($round);
         }
-        $commissaire->setType($commissaireDto->type)
+
+        $commissaire->setType($commissaireType ?? null)
             ->setLicenceNumber($commissaireDto->licenceNumber)
             ->setAsaCode($commissaireDto->asaCode)
             ->setIsFlag($commissaireDto->isFlag);
@@ -127,8 +134,12 @@ readonly class CommissaireBusiness
 
         $this->em->persist($person);
 
+        if (!empty($commissaireDto->typeId)) {
+            $commissaireType = $this->commissaireTypeRepository->find($commissaireDto->typeId);
+        }
+
         // update commissaire
-        $commissaire->setType($commissaireDto->type)
+        $commissaire->setType($commissaireType ?? null)
             ->setLicenceNumber($commissaireDto->licenceNumber)
             ->setAsaCode($commissaireDto->asaCode)
             ->setIsFlag($commissaireDto->isFlag);

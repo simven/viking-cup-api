@@ -30,7 +30,7 @@ class CommissaireApiController extends AbstractController
         #[MapQueryParameter] ?string $phone = null,
         #[MapQueryParameter] ?string $licenceNumber = null,
         #[MapQueryParameter] ?string $asaCode = null,
-        #[MapQueryParameter] ?string $type = null,
+        #[MapQueryParameter] ?int    $typeId = null,
         #[MapQueryParameter] ?bool   $isFlag = null,
     ): JsonResponse
     {
@@ -45,11 +45,11 @@ class CommissaireApiController extends AbstractController
             $phone,
             $licenceNumber,
             $asaCode,
-            $type,
+            $typeId,
             $isFlag
         );
 
-        return $this->json($commissaires, Response::HTTP_OK, [], ['groups' => ['commissaire', 'commissaireRound', 'round', 'roundDetails', 'roundDetail', 'roundEvent', 'event']]);
+        return $this->json($commissaires, Response::HTTP_OK, [], ['groups' => ['commissaire', 'type', 'commissaireType', 'commissaireRound', 'round', 'roundDetails', 'roundDetail', 'roundEvent', 'event']]);
     }
 
     #[Route('', name: 'create', methods: ['POST'])]

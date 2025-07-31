@@ -23,9 +23,9 @@ class Volunteer
     #[Groups('volunteerRound')]
     private ?Round $round = null;
 
-    #[ORM\Column(length: 255, nullable: true)]
-    #[Groups('volunteer')]
-    private ?string $role = null;
+    #[ORM\ManyToOne(inversedBy: 'volunteers')]
+    #[Groups('role')]
+    private ?VolunteerRole $role = null;
 
     public function getId(): ?int
     {
@@ -56,12 +56,12 @@ class Volunteer
         return $this;
     }
 
-    public function getRole(): ?string
+    public function getRole(): ?VolunteerRole
     {
         return $this->role;
     }
 
-    public function setRole(?string $role): static
+    public function setRole(?VolunteerRole $role): static
     {
         $this->role = $role;
 

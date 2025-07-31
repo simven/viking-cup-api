@@ -31,9 +31,9 @@ class Commissaire
     #[Groups('commissaire')]
     private ?string $asaCode = null;
 
-    #[ORM\Column(length: 255, nullable: true)]
-    #[Groups('commissaire')]
-    private ?string $type = null;
+    #[ORM\ManyToOne(inversedBy: 'commissaires')]
+    #[Groups('type')]
+    private ?CommissaireType $type = null;
 
     #[ORM\Column]
     #[Groups('commissaire')]
@@ -92,12 +92,12 @@ class Commissaire
         return $this;
     }
 
-    public function getType(): ?string
+    public function getType(): ?CommissaireType
     {
         return $this->type;
     }
 
-    public function setType(?string $type): static
+    public function setType(?CommissaireType $type): static
     {
         $this->type = $type;
 
