@@ -11,8 +11,6 @@ use App\Repository\RoundDetailRepository;
 use App\Repository\RoundRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Exception;
-use Pagerfanta\Doctrine\ORM\QueryAdapter;
-use Pagerfanta\Pagerfanta;
 use Symfony\Component\Serializer\SerializerInterface;
 
 readonly class RescuerBusiness
@@ -39,14 +37,8 @@ readonly class RescuerBusiness
         ?string $role = null
     ): array
     {
-        $persons = $this->personRepository->findRescuersPaginated($sort, $order, $name, $email, $phone, $role);
-
-        $adapter = new QueryAdapter($persons, false, false);
-        $pager = new Pagerfanta($adapter);
-        $totalItems = $pager->count();
-        $pager->setMaxPerPage($limit);
-        $pager->setCurrentPage($page);
-        $persons = $pager->getCurrentPageResults();
+        $personIdsTotal = $this->personRepository->findFilteredRescuerPersonIdsPaginated($sort, $order, $name, $email, $phone, $role);
+        $persons = $this->personRepository->findPersonsByIds($personIdsTotal['items']);
 
         $rescuerPersons = [];
         /** @var Person $person */
@@ -68,7 +60,7 @@ readonly class RescuerBusiness
 
         return [
             'pagination' => [
-                'totalItems' => $totalItems,
+                'totalItems' => $personIdsTotal['total'],
                 'pageIndex' => $page,
                 'itemsPerPage' => $limit
             ],

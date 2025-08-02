@@ -12,8 +12,6 @@ use App\Repository\RoundDetailRepository;
 use App\Repository\RoundRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Exception;
-use Pagerfanta\Doctrine\ORM\QueryAdapter;
-use Pagerfanta\Pagerfanta;
 use Symfony\Component\Serializer\SerializerInterface;
 
 readonly class CommissaireBusiness
@@ -44,14 +42,8 @@ readonly class CommissaireBusiness
         ?bool   $isFlag = null
     ): array
     {
-        $persons = $this->personRepository->findCommissairesPaginated($sort, $order, $name, $email, $phone, $licenceNumber, $asaCode, $typeId, $isFlag);
-
-        $adapter = new QueryAdapter($persons, false, false);
-        $pager = new Pagerfanta($adapter);
-        $totalItems = $pager->count();
-        $pager->setMaxPerPage($limit);
-        $pager->setCurrentPage($page);
-        $persons = $pager->getCurrentPageResults();
+        $personIdsTotal = $this->personRepository->findFilteredCommissairePersonIdsPaginated($page, $limit, $sort, $order, $eventId, $roundId, $name, $email, $phone, $licenceNumber, $asaCode, $typeId, $isFlag);
+        $persons = $this->personRepository->findPersonsByIds($personIdsTotal['items']);
 
         $commissairePersons = [];
         /** @var Person $person */
@@ -63,7 +55,7 @@ readonly class CommissaireBusiness
                     (!$roundId || $commissaire->getRound()->getId() === $roundId) &&
                     (!$licenceNumber || str_contains($commissaire->getLicenceNumber(), $licenceNumber) !== false) &&
                     (!$asaCode || str_contains($commissaire->getAsaCode(), $asaCode) !== false) &&
-                    (!$typeId || $commissaire->getType()->getId() === $typeId) &&
+                    (!$typeId || $commissaire->getType()?->getId() === $typeId) &&
                     ($isFlag === null || $commissaire->isFlag() === $isFlag);
             });
 
@@ -76,7 +68,7 @@ readonly class CommissaireBusiness
 
         return [
             'pagination' => [
-                'totalItems' => $totalItems,
+                'totalItems' => $personIdsTotal['total'],
                 'pageIndex' => $page,
                 'itemsPerPage' => $limit
             ],

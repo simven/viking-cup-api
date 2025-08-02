@@ -6,7 +6,6 @@ use App\Dto\CreateVolunteerDto;
 use App\Dto\VolunteerDto;
 use App\Entity\Volunteer;
 use App\Entity\Person;
-use App\Entity\Round;
 use App\Helper\LinkHelper;
 use App\Repository\PersonRepository;
 use App\Repository\RoundDetailRepository;
@@ -14,8 +13,6 @@ use App\Repository\RoundRepository;
 use App\Repository\VolunteerRoleRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Exception;
-use Pagerfanta\Doctrine\ORM\QueryAdapter;
-use Pagerfanta\Pagerfanta;
 use Symfony\Component\Serializer\SerializerInterface;
 
 readonly class VolunteerBusiness
@@ -44,14 +41,8 @@ readonly class VolunteerBusiness
         ?int    $roleId = null
     ): array
     {
-        $persons = $this->personRepository->findVolunteersPaginated($sort, $order, $name, $email, $phone, $roleId);
-
-        $adapter = new QueryAdapter($persons, false, false);
-        $pager = new Pagerfanta($adapter);
-        $totalItems = $pager->count();
-        $pager->setMaxPerPage($limit);
-        $pager->setCurrentPage($page);
-        $persons = $pager->getCurrentPageResults();
+        $personIdsTotal = $this->personRepository->findFilteredVolunteerPersonIdsPaginated($page, $limit, $sort, $order, $eventId, $roundId, $name, $email, $phone, $roleId);
+        $persons = $this->personRepository->findPersonsByIds($personIdsTotal['items']);
 
         $volunteerPersons = [];
         /** @var Person $person */
@@ -73,7 +64,7 @@ readonly class VolunteerBusiness
 
         return [
             'pagination' => [
-                'totalItems' => $totalItems,
+                'totalItems' => $personIdsTotal['total'],
                 'pageIndex' => $page,
                 'itemsPerPage' => $limit
             ],

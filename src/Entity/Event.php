@@ -29,6 +29,7 @@ class Event
      * @var Collection<int, Round>
      */
     #[ORM\OneToMany(targetEntity: Round::class, mappedBy: 'event')]
+    #[Groups(['eventRounds'])]
     private Collection $rounds;
 
     /**
