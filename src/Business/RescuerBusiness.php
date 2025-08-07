@@ -37,7 +37,7 @@ readonly class RescuerBusiness
         ?string $role = null
     ): array
     {
-        $personIdsTotal = $this->personRepository->findFilteredRescuerPersonIdsPaginated($sort, $order, $name, $email, $phone, $role);
+        $personIdsTotal = $this->personRepository->findFilteredRescuerPersonIdsPaginated($page, $limit, $sort, $order, $eventId, $roundId, $name, $email, $phone, $role);
         $persons = $this->personRepository->findPersonsByIds($personIdsTotal['items']);
 
         $rescuerPersons = [];

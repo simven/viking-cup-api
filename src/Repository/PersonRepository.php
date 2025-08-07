@@ -548,6 +548,8 @@ class PersonRepository extends ServiceEntityRepository
         int     $limit = 50,
         ?string $sort = null,
         ?string $order = null,
+        ?int    $eventId = null,
+        ?int    $roundId = null,
         ?string $name = null,
         ?string $email = null,
         ?string $phone = null,
@@ -560,6 +562,15 @@ class PersonRepository extends ServiceEntityRepository
             ->select('DISTINCT p.id')
             ->innerJoin('p.rescuers', 'r');
 
+        if ($eventId !== null) {
+            $qb->innerJoin('v.round', 'r')
+                ->andWhere('r.event = :eventId')
+                ->setParameter('eventId', $eventId);
+        }
+        if ($roundId !== null) {
+            $qb->andWhere('v.round = :roundId')
+                ->setParameter('roundId', $roundId);
+        }
         if ($name !== null) {
             $qb->andWhere('p.firstName LIKE :name OR p.lastName LIKE :name')
                 ->setParameter('name', '%' . $name . '%');

@@ -42,7 +42,7 @@ security:
         - { path: ^/api/configurations/liveId, roles: PUBLIC_ACCESS, methods: [GET] }
         - { path: ^/api/mediaFiles, roles: PUBLIC_ACCESS, methods: [GET] }
         - { path: ^/api/medias/public, roles: PUBLIC_ACCESS, methods: [GET,POST,PUT] }
-        - { path: ^/api/sponsors, roles: PUBLIC_ACCESS, methods: [GET] }
+        - { path: ^/api/sponsors/public, roles: PUBLIC_ACCESS, methods: [GET] }
         - { path: ^/api/events, roles: PUBLIC_ACCESS, methods: [GET] }
         - { path: ^/api/rounds, roles: PUBLIC_ACCESS, methods: [GET] }
         - { path: ^/api/roundCategories, roles: PUBLIC_ACCESS, methods: [GET] }

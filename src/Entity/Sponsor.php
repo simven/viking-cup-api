@@ -18,19 +18,19 @@ class Sponsor
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
-    #[Groups(['sponsor:read'])]
+    #[Groups(['sponsor', 'sponsor:read'])]
     private ?int $id = null;
 
     #[ORM\Column(length: 255)]
-    #[Groups(['sponsor:read'])]
+    #[Groups(['sponsor', 'sponsor:read'])]
     private ?string $name = null;
 
     #[ORM\Column(length: 255, nullable: true)]
-    #[Groups(['sponsor:read'])]
+    #[Groups(['sponsor', 'sponsor:read'])]
     private ?string $description = null;
 
     #[ORM\Column(length: 255)]
-    #[Groups(['sponsor:read'])]
+    #[Groups(['sponsor', 'sponsor:read'])]
     private ?string $filePath = null;
 
     #[Vich\UploadableField(mapping: "sponsor_file", fileNameProperty: "filePath")]
@@ -41,7 +41,7 @@ class Sponsor
     )]
     private ?File $file = null;
 
-    #[ORM\Column(length: 255)]
+    #[ORM\Column(length: 255, nullable: true)]
     #[Groups(['sponsor:read'])]
     private ?string $alt = null;
 
@@ -49,20 +49,37 @@ class Sponsor
      * @var Collection<int, Link>
      */
     #[ORM\ManyToMany(targetEntity: Link::class, inversedBy: 'sponsors')]
-    #[Groups(['sponsor:read'])]
+    #[Groups(['sponsorLinks', 'sponsor:read'])]
     private Collection $links;
 
     #[ORM\Column]
+    #[Groups(['sponsor'])]
     private ?\DateTimeImmutable $createdAt;
 
     #[ORM\Column]
+    #[Groups(['sponsor'])]
     private ?\DateTimeImmutable $updatedAt;
+
+    #[ORM\ManyToOne(inversedBy: 'sponsors')]
+    #[Groups(['sponsorPerson'])]
+    private ?Person $contact = null;
+
+    /**
+     * @var Collection<int, Sponsorship>
+     */
+    #[ORM\OneToMany(targetEntity: Sponsorship::class, mappedBy: 'sponsor')]
+    private Collection $sponsorships;
+
+    #[ORM\Column]
+    #[Groups(['sponsor', 'sponsor:read'])]
+    private ?bool $displayWebsite = false;
 
     public function __construct()
     {
         $this->links = new ArrayCollection();
         $this->createdAt = new \DateTimeImmutable();
         $this->updatedAt = new \DateTimeImmutable();
+        $this->sponsorships = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -123,7 +140,7 @@ class Sponsor
         return $this->alt;
     }
 
-    public function setAlt(string $alt): static
+    public function setAlt(?string $alt): static
     {
         $this->alt = $alt;
 
@@ -174,6 +191,60 @@ class Sponsor
     public function setUpdatedAt(\DateTimeImmutable $updatedAt): static
     {
         $this->updatedAt = $updatedAt;
+
+        return $this;
+    }
+
+    public function getContact(): ?Person
+    {
+        return $this->contact;
+    }
+
+    public function setContact(?Person $contact): static
+    {
+        $this->contact = $contact;
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, Sponsorship>
+     */
+    public function getSponsorships(): Collection
+    {
+        return $this->sponsorships;
+    }
+
+    public function addSponsorship(Sponsorship $sponsorship): static
+    {
+        if (!$this->sponsorships->contains($sponsorship)) {
+            $this->sponsorships->add($sponsorship);
+            $sponsorship->setSponsor($this);
+        }
+
+        return $this;
+    }
+
+    public function removeSponsorship(Sponsorship $sponsorship): static
+    {
+        if ($this->sponsorships->removeElement($sponsorship)) {
+            // set the owning side to null (unless already changed)
+            if ($sponsorship->getSponsor() === $this) {
+                $sponsorship->setSponsor(null);
+            }
+        }
+
+        return $this;
+    }
+
+    public function isDisplayWeb(): ?bool
+    {
+        return $this->displayWebsite;
+    }
+
+    public function setDisplayWebsite(bool $displayWebsite): static
+    {
+        $this->displayWebsite = $displayWebsite;
 
         return $this;
     }
