@@ -33,16 +33,8 @@ class Sponsor
     #[Groups(['sponsor', 'sponsor:read'])]
     private ?string $filePath = null;
 
-    #[Vich\UploadableField(mapping: "sponsor_file", fileNameProperty: "filePath")]
-    #[Assert\NotNull(message: "Le fichier est obligatoire.")]
-    #[Assert\File(
-        mimeTypes: ["image/jpeg", "image/png", "image/webp"],
-        mimeTypesMessage: "Seuls les fichiers JPEG, PNG et WEBP sont autorisés."
-    )]
-    private ?File $file = null;
-
     #[ORM\Column(length: 255, nullable: true)]
-    #[Groups(['sponsor:read'])]
+    #[Groups(['sponsor', 'sponsor:read'])]
     private ?string $alt = null;
 
     /**
@@ -119,18 +111,6 @@ class Sponsor
     public function setFilePath(?string $filePath): static
     {
         $this->filePath = $filePath;
-
-        return $this;
-    }
-
-    public function getFile(): ?File
-    {
-        return $this->file;
-    }
-
-    public function setFile(File $file): static
-    {
-        $this->file = $file;
 
         return $this;
     }
@@ -237,7 +217,7 @@ class Sponsor
         return $this;
     }
 
-    public function isDisplayWeb(): ?bool
+    public function isDisplayWebsite(): ?bool
     {
         return $this->displayWebsite;
     }

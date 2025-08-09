@@ -21,13 +21,14 @@ use Symfony\Component\Serializer\SerializerInterface;
 #[Route('/api/sponsors', name: 'api_sponsors')]
 class SponsorApiController extends AbstractController
 {
-    #[Route('/public', name: 'list', methods: ['GET'])]
-    public function list(SponsorRepository $sponsorRepository, SerializerInterface $serializer): JsonResponse
+    #[Route('/public', name: 'list_website', methods: ['GET'])]
+    public function list(SponsorRepository $sponsorRepository): JsonResponse
     {
         $sponsors = $sponsorRepository->findBy(['displayWebsite' => true]);
 
         return $this->json($sponsors, Response::HTTP_OK, [], ['groups' => 'sponsor:read']);
     }
+
     #[Route('', name: 'list', methods: ['GET'])]
     public function getVisitors(
         SponsorBusiness $sponsorBusiness,

@@ -11,6 +11,7 @@ use App\Entity\Sponsor;
 use App\Entity\Sponsorship;
 use App\Entity\SponsorshipCounterpart;
 use App\Helper\FileHelper;
+use App\Repository\EventRepository;
 use App\Repository\PersonRepository;
 use App\Repository\RoundRepository;
 use App\Repository\SponsorRepository;
@@ -25,6 +26,7 @@ readonly class SponsorBusiness
     public function __construct(
         private SponsorRepository      $sponsorRepository,
         private PersonRepository       $personRepository,
+        private EventRepository        $eventRepository,
         private RoundRepository        $roundRepository,
         private FileHelper             $fileHelper,
         private SerializerInterface    $serializer,
@@ -231,7 +233,7 @@ readonly class SponsorBusiness
                 $round = $this->roundRepository->find($sponsorshipDto->roundId);
                 $path = 'sponsor/' . $sponsor->getId() . '/round' . $round->getId();
             } elseif ($sponsorshipDto->eventId) {
-                $event = $this->roundRepository->find($sponsorshipDto->eventId);
+                $event = $this->eventRepository->find($sponsorshipDto->eventId);
                 $path = 'sponsor/' . $sponsor->getId() . '/event' . $event->getId();
             }
 
