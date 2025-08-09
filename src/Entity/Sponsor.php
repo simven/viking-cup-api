@@ -29,7 +29,7 @@ class Sponsor
     #[Groups(['sponsor', 'sponsor:read'])]
     private ?string $description = null;
 
-    #[ORM\Column(length: 255)]
+    #[ORM\Column(length: 255, nullable: true)]
     #[Groups(['sponsor', 'sponsor:read'])]
     private ?string $filePath = null;
 
@@ -116,7 +116,7 @@ class Sponsor
         return $this->filePath;
     }
 
-    public function setFilePath(string $filePath): static
+    public function setFilePath(?string $filePath): static
     {
         $this->filePath = $filePath;
 

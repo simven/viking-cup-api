@@ -11,17 +11,20 @@ use App\Entity\Sponsor;
 use App\Entity\Sponsorship;
 use App\Entity\SponsorshipCounterpart;
 use App\Helper\FileHelper;
+use App\Repository\PersonRepository;
 use App\Repository\RoundRepository;
 use App\Repository\SponsorRepository;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\EntityManagerInterface;
 use Exception;
+use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\Serializer\SerializerInterface;
 
 readonly class SponsorBusiness
 {
     public function __construct(
         private SponsorRepository      $sponsorRepository,
+        private PersonRepository       $personRepository,
         private RoundRepository        $roundRepository,
         private FileHelper             $fileHelper,
         private SerializerInterface    $serializer,
@@ -88,40 +91,73 @@ readonly class SponsorBusiness
         ];
     }
 
-    public function createSponsor(CreateSponsorDto $sponsorDto): ?Sponsor
+    /**
+     * Creates a new sponsor and its contact information.
+     *
+     * @param CreateSponsorDto $sponsorDto The data transfer object containing the sponsor information.
+     * @param UploadedFile|null $sponsorImage An optional image file for the sponsor.
+     * @param UploadedFile[] $contractFiles An array of contract files to be associated with the sponsorships.
+     *
+     * @return Sponsor The created sponsor entity.
+     */
+    public function createSponsor(CreateSponsorDto $sponsorDto, ?UploadedFile $sponsorImage, array $contractFiles): Sponsor
     {
-        $person = $this->personRepository->find($sponsorDto->personId);
-        if ($sponsorDto->personId === null || $person === null) {
-            throw new Exception('Person not found');
+        // create sponsor
+        $sponsor = new Sponsor();
+        $sponsor->setName($sponsorDto->name)
+            ->setDescription($sponsorDto->description)
+            ->setDisplayWebsite($sponsorDto->displayWebsite)
+            ->setAlt($sponsorDto->alt);
+
+        if ($sponsorDto->contactId !== null) {
+            $person = $this->personRepository->find($sponsorDto->contactId);
+            $sponsor->setContact($person);
         }
 
-        $round = $this->roundRepository->find($sponsorDto->roundId);
-        if ($sponsorDto->roundId === null || $round === null) {
-            throw new Exception('Round not found');
-        }
+        if ($sponsorImage !== null) {
+            $path = 'uploads/media/';
+            $filename = $this->fileHelper->normalizeFilename($sponsorDto->name);
+            $filename = empty($filename) ? $sponsorImage->getClientOriginalName() : $filename;
 
-        // get round sponsor or create a new one
-        $sponsor = $person->getSponsors()->filter(fn(Sponsor $sponsor) => $sponsor->getRound()?->getId() === $round->getId())->first();
-        if ($sponsor === false) {
-            $sponsor = new Sponsor();
-            $sponsor->setPerson($person)
-                ->setRound($round);
+            $sponsorImage = $this->fileHelper->saveFile($sponsorImage, $path, $filename . '.' . $sponsorImage->getClientOriginalExtension());
+            $sponsor->setFilePath($sponsorImage->getPathname());
         }
-        $sponsor->setRole($sponsorDto->role);
 
         $this->em->persist($sponsor);
+
+        // update sponsorships
+        $sponsorshipsDto = $this->serializer->denormalize($sponsorDto->sponsorships, SponsorshipDto::class . '[]');
+        $this->updateSponsorships($sponsor, $sponsorshipsDto, $contractFiles);
+
         $this->em->flush();
 
         return $sponsor;
     }
 
-    public function updatePersonSponsor(Sponsor $sponsor, SponsorDto $sponsorDto): void
+    /**
+     * Updates a sponsor and its contact information.
+     *
+     * @param Sponsor $sponsor The sponsor to update.
+     * @param SponsorDto $sponsorDto The data transfer object containing the updated sponsor information.
+     * @param UploadedFile|null $sponsorImage An optional image file for the sponsor.
+     * @param UploadedFile[] $contractFiles An array of contract files to be associated with the sponsorships.
+     */
+    public function updatePersonSponsor(Sponsor $sponsor, SponsorDto $sponsorDto, ?UploadedFile $sponsorImage, array $contractFiles): void
     {
         // update sponsor
         $sponsor->setName($sponsorDto->name)
             ->setDescription($sponsorDto->description)
             ->setDisplayWebsite($sponsorDto->displayWebsite)
             ->setAlt($sponsorDto->alt);
+
+        if ($sponsorImage !== null) {
+            $path = 'uploads/media/';
+            $filename = $this->fileHelper->normalizeFilename($sponsorDto->name);
+            $filename = empty($filename) ? $sponsorImage->getClientOriginalName() : $filename;
+
+            $sponsorImage = $this->fileHelper->saveFile($sponsorImage, $path, $filename . '.' . $sponsorImage->getClientOriginalExtension());
+            $sponsor->setFilePath($sponsorImage->getPathname());
+        }
 
         // update contact
         $contact = $sponsor->getContact();
@@ -139,10 +175,11 @@ readonly class SponsorBusiness
 
         $this->em->persist($sponsor);
         $this->em->persist($contact);
+        $this->em->flush();
 
         // update sponsorships
         $sponsorshipsDto = $this->serializer->denormalize($sponsorDto->sponsorships, SponsorshipDto::class . '[]');
-        $this->updateSponsorships($sponsor, $sponsorshipsDto);
+        $this->updateSponsorships($sponsor, $sponsorshipsDto, $contractFiles);
 
         $this->em->flush();
     }
@@ -150,6 +187,15 @@ readonly class SponsorBusiness
     public function deleteSponsor(Sponsor $sponsor): void
     {
         $this->em->remove($sponsor);
+        $this->em->flush();
+    }
+
+    public function deleteSponsorImage(Sponsor $sponsor): void
+    {
+        $this->fileHelper->deleteFile($sponsor->getFilePath());
+
+        $sponsor->setFilePath(null);
+        $this->em->persist($sponsor);
         $this->em->flush();
     }
 
@@ -162,7 +208,7 @@ readonly class SponsorBusiness
         $this->em->flush();
     }
 
-    private function updateSponsorships(Sponsor $sponsor, array $sponsorshipsDto): void
+    private function updateSponsorships(Sponsor $sponsor, array $sponsorshipsDto, array $contractFiles): void
     {
         $sponsorships = $sponsor->getSponsorships();
 
@@ -170,7 +216,7 @@ readonly class SponsorBusiness
         $this->deleteSponsorships($sponsorships, $sponsorshipsDto);
 
         /** @var SponsorshipDto $sponsorshipDto */
-        foreach ($sponsorshipsDto as $sponsorshipDto) {
+        foreach ($sponsorshipsDto as $key => $sponsorshipDto) {
             if ($sponsorshipDto->id) {
                 $sponsorship = $sponsorships->filter(fn(Sponsorship $s) => $s->getId() === $sponsorshipDto->id)->first();
                 if ($sponsorship === false) {
@@ -181,16 +227,26 @@ readonly class SponsorBusiness
                 $sponsorship->setSponsor($sponsor);
             }
 
-            if ($sponsorshipDto->eventId) {
-                $event = $this->roundRepository->find($sponsorshipDto->eventId);
-            }
             if ($sponsorshipDto->roundId) {
                 $round = $this->roundRepository->find($sponsorshipDto->roundId);
+                $path = 'sponsor/' . $sponsor->getId() . '/round' . $round->getId();
+            } elseif ($sponsorshipDto->eventId) {
+                $event = $this->roundRepository->find($sponsorshipDto->eventId);
+                $path = 'sponsor/' . $sponsor->getId() . '/event' . $event->getId();
             }
 
             $sponsorship->setEvent($event ?? null)
                 ->setRound($round ?? null)
                 ->setStatus($sponsorshipDto->status);
+
+            if (isset($contractFiles[$key])) {
+                $contractFile = $this->fileHelper->saveFile(
+                    $contractFiles[$key],
+                    $path ?? 'sponsor/' . $sponsor->getId(),
+                    'contract.' . $contractFiles[$key]->getClientOriginalExtension()
+                );
+                $sponsorship->setContractFilePath($contractFile->getPathname());
+            }
 
             $counterpartsDto = $this->serializer->denormalize($sponsorshipDto->counterparts, SponsorshipCounterpartDto::class . '[]');
             $this->updateCounterparts($sponsorship, $counterpartsDto);

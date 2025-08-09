@@ -3,6 +3,7 @@
 namespace App\Controller\Api;
 
 use App\Business\SponsorBusiness;
+use App\Dto\CreateSponsorDto;
 use App\Dto\SponsorDto;
 use App\Entity\Sponsor;
 use App\Entity\Sponsorship;
@@ -65,18 +66,37 @@ class SponsorApiController extends AbstractController
         return $this->json($sponsors, Response::HTTP_OK, [], ['groups' => ['sponsorship', 'sponsorshipCounterparts', 'sponsorshipCounterpart', 'sponsorshipEvent', 'event', 'sponsorshipRound', 'round', 'roundEvent', 'sponsorshipSponsor', 'sponsor', 'sponsorLinks', 'link', 'linkLinkType', 'linkType']]);
     }
 
+    #[Route('', name: 'create', methods: ['POST'])]
+    public function createSponsor(
+        SponsorBusiness $sponsorBusiness,
+        Request $request,
+        SerializerInterface $serializer,
+        #[MapUploadedFile] UploadedFile|array $sponsorImage,
+        #[MapUploadedFile(name: 'contractFiles')] array $contractFiles = []
+    ): Response
+    {
+        $sponsorDto = $request->request->get('sponsor');
+        $sponsorDto = $serializer->deserialize($sponsorDto, CreateSponsorDto::class, 'json');
+
+        $sponsor = $sponsorBusiness->createSponsor($sponsorDto, !empty($sponsorImage) ? $sponsorImage : null, $contractFiles);
+
+        return $this->json($sponsor, Response::HTTP_CREATED, [], ['groups' => ['sponsor', 'sponsorLinks', 'link', 'linkLinkType', 'linkType']]);
+    }
+
     #[Route('/{sponsor}', name: 'update', methods: ['POST'])]
     public function updateSponsor(
         SponsorBusiness $sponsorBusiness,
         Request $request,
         SerializerInterface $serializer,
-        Sponsor $sponsor
+        Sponsor $sponsor,
+        #[MapUploadedFile] UploadedFile|array $sponsorImage,
+        #[MapUploadedFile(name: 'contractFiles')] array $contractFiles = []
     ): Response
     {
         $sponsorDto = $request->request->get('sponsor');
         $sponsorDto = $serializer->deserialize($sponsorDto, SponsorDto::class, 'json');
 
-        $sponsorBusiness->updatePersonSponsor($sponsor, $sponsorDto);
+        $sponsorBusiness->updatePersonSponsor($sponsor, $sponsorDto, !empty($sponsorImage) ? $sponsorImage : null, $contractFiles);
 
         return new Response();
     }
@@ -92,8 +112,19 @@ class SponsorApiController extends AbstractController
         return new Response(null, Response::HTTP_NO_CONTENT);
     }
 
+    #[Route('/image/{sponsor}', name: 'delete_image', methods: ['DELETE'])]
+    public function deleteSponsorImage(
+        SponsorBusiness $sponsorBusiness,
+        Sponsor $sponsor
+    ): Response
+    {
+        $sponsorBusiness->deleteSponsorImage($sponsor);
+
+        return new Response(null, Response::HTTP_NO_CONTENT);
+    }
+
     #[Route('/contract/{sponsorship}', name: 'delete_contract', methods: ['DELETE'])]
-    public function deleteMediaBook(
+    public function deleteSponsorshipContract(
         SponsorBusiness $sponsorBusiness,
         Sponsorship $sponsorship
     ): Response
