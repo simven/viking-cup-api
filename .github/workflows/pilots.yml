@@ -1,4 +1,4 @@
-name: Sync Billetweb
+name: Sync Billetweb Pilots
 
 on:
   schedule:
@@ -20,6 +20,6 @@ jobs:
           | jq -r '.token')
 
         # 2. Sync pilots
-        curl -X POST https://bo.viking-cup.fr/api/billetweb/sync/tickets \
+        curl -X POST https://bo.viking-cup.fr/api/billetweb/sync/pilots \
           -H "Authorization: Bearer $TOKEN" \
           -H "Content-Type: application/json"
