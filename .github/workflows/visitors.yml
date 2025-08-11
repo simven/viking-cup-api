@@ -1,0 +1,25 @@
+name: Sync Billetweb Visitors
+
+on:
+  schedule:
+    - cron: '0 5 * * *'  # Tous les jours à 5h du matin UTC (8h FR)
+  workflow_dispatch:      # Permet de le lancer manuellement
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Synchroniser les visiteurs depuis Billetweb
+      run: |
+        # 1. Auth - récupération du token
+        echo "BACKEND_USERNAME : ${{ secrets.BACKEND_USERNAME }}"
+        TOKEN=$(curl -s -X POST https://bo.viking-cup.fr/api/login \
+          -H "Content-Type: application/json" \
+          -d '{"username": "${{ secrets.BACKEND_USERNAME }}", "password": "${{ secrets.BACKEND_PASSWORD }}"}' \
+          | jq -r '.token')
+
+        # 2. Sync pilots
+        curl -X POST https://bo.viking-cup.fr/api/billetweb/sync/visitors \
+          -H "Authorization: Bearer $TOKEN" \
+          -H "Content-Type: application/json"
