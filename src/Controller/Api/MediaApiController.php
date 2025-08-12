@@ -3,10 +3,14 @@
 namespace App\Controller\Api;
 
 use App\Business\MediaBusiness;
+use App\Dto\CreateMediaDto;
 use App\Dto\MediaDto;
 use App\Dto\MediaSelectionDto;
 use App\Entity\Media;
 use App\Entity\Round;
+use App\Repository\PersonRepository;
+use App\Repository\RoundRepository;
+use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -75,7 +79,7 @@ class MediaApiController extends AbstractController
     }
 
     #[Route('/public', name: 'create', methods: ['POST'])]
-    public function createMedia(
+    public function createMediaPublic(
         MediaBusiness $mediaBusiness,
         Request $request,
         SerializerInterface $serializer,
@@ -87,6 +91,37 @@ class MediaApiController extends AbstractController
         $mediaDto = $serializer->deserialize($mediaDto, MediaDto::class, 'json');
 
         $mediaBusiness->createPersonMedia($mediaDto, $insuranceFile, !empty($bookFile) ? $bookFile : null);
+
+        return new Response();
+    }
+
+    #[Route('', name: 'create', methods: ['POST'])]
+    public function createMedia(
+        MediaBusiness $mediaBusiness,
+        PersonRepository $personRepository,
+        RoundRepository $roundRepository,
+        EntityManagerInterface $em,
+        Request $request,
+        SerializerInterface $serializer,
+        #[MapUploadedFile] UploadedFile|array $insuranceFile,
+        #[MapUploadedFile] UploadedFile|array $bookFile
+    ): Response
+    {
+        $mediaDto = $request->request->get('media');
+        $mediaDto = $serializer->deserialize($mediaDto, CreateMediaDto::class, 'json');
+
+        $person = $personRepository->find($mediaDto->personId);
+        if ($mediaDto->personId === null || $person === null) {
+            throw new \Exception('Person not found');
+        }
+
+        $round = $roundRepository->find($mediaDto->roundId);
+        if ($mediaDto->roundId === null || $round === null) {
+            throw new \Exception('Round not found');
+        }
+
+        $mediaBusiness->createMedia($person, $round, $mediaDto->pilotFollow, !empty($insuranceFile) ? $insuranceFile : null, !empty($bookFile) ? $bookFile : null);
+        $em->flush();
 
         return new Response();
     }

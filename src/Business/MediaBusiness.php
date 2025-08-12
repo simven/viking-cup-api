@@ -4,24 +4,19 @@ namespace App\Business;
 
 use App\Dto\MediaDto;
 use App\Dto\MediaSelectionDto;
-use App\Entity\Link;
 use App\Entity\Media;
 use App\Entity\Person;
-use App\Entity\PersonType;
 use App\Entity\Round;
 use App\Helper\FileHelper;
 use App\Helper\EmailHelper;
+use App\Helper\LinkHelper;
 use App\Helper\PdfHelper;
-use App\Repository\LinkTypeRepository;
 use App\Repository\PersonRepository;
-use App\Repository\PersonTypeRepository;
 use App\Repository\RoundDetailRepository;
 use App\Repository\RoundRepository;
 use DateTime;
 use Doctrine\ORM\EntityManagerInterface;
 use Exception;
-use Pagerfanta\Doctrine\ORM\QueryAdapter;
-use Pagerfanta\Pagerfanta;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\Serializer\SerializerInterface;
@@ -31,13 +26,12 @@ use Twig\Environment;
 readonly class MediaBusiness
 {
     public function __construct(
-        private PersonTypeRepository   $personTypeRepository,
         private PersonRepository       $personRepository,
-        private LinkTypeRepository     $linkTypeRepository,
         private RoundRepository        $roundRepository,
         private RoundDetailRepository  $roundDetailRepository,
         private FileHelper             $fileHelper,
         private EmailHelper            $emailHelper,
+        private LinkHelper             $linkHelper,
         private Environment            $twig,
         private SerializerInterface    $serializer,
         private ParameterBagInterface  $parameterBag,
@@ -62,19 +56,13 @@ readonly class MediaBusiness
         ?bool   $generatePass = null
     ): array
     {
-        $persons = $this->personRepository->findAllPaginated($sort, $order, $name, $email, $phone, $selected, $selectedMailSent, $eLearningMailSent, $briefingSeen, $generatePass, 'media');
-
-        $adapter = new QueryAdapter($persons, false, false);
-        $pager = new Pagerfanta($adapter);
-        $totalItems = $pager->count();
-        $pager->setMaxPerPage($limit);
-        $pager->setCurrentPage($page);
-        $persons = $pager->getCurrentPageResults();
+        $personIdsTotal = $this->personRepository->findFilteredMediaPersonIdsPaginated($page, $limit, $sort, $order, $eventId, $roundId, $name, $email, $phone, $selected, $selectedMailSent, $eLearningMailSent, $briefingSeen, $generatePass);
+        $persons = $this->personRepository->findPersonsByIds($personIdsTotal['items']);
 
         $mediaPersons = [];
         /** @var Person $person */
         foreach ($persons as $person) {
-            $personArray = $this->serializer->normalize($person, 'json', ['groups' => ['person', 'personPersonType', 'personType', 'personRoundDetails', 'roundDetail', 'personLinks', 'link', 'linkLinkType', 'linkType']]);
+            $personArray = $this->serializer->normalize($person, 'json', ['groups' => ['person', 'personRoundDetails', 'roundDetail', 'personLinks', 'link', 'linkLinkType', 'linkType']]);
 
             $medias = $person->getMedias()->filter(function (Media $media) use ($generatePass, $briefingSeen, $selectedMailSent, $eLearningMailSent, $selected, $roundId, $eventId) {
                 return (!$eventId || $media->getRound()->getEvent()->getId() === $eventId) &&
@@ -95,7 +83,7 @@ readonly class MediaBusiness
 
         return [
             'pagination' => [
-                'totalItems' => $totalItems,
+                'totalItems' => $personIdsTotal['total'],
                 'pageIndex' => $page,
                 'itemsPerPage' => $limit
             ],
@@ -126,28 +114,25 @@ readonly class MediaBusiness
         $now = new DateTime();
         $nextRound = $this->roundRepository->findRoundFromDate($now);
 
-        $personType = $this->personTypeRepository->find(1);
-
-        $person = $this->createPerson($mediaDto, $personType, $nextRound);
+        $person = $this->createPerson($mediaDto, $nextRound);
 
         if (!empty($mediaDto->instagram)) {
-            $this->upsertInstagramLink($person, $mediaDto->instagram);
+            $this->linkHelper->upsertInstagramLink($person, $mediaDto->instagram);
         }
 
-        $this->createMedia($person, $nextRound, $insuranceFile, $bookFile);
+        $this->createMedia($person, $nextRound, $mediaDto->pilotFollow, $insuranceFile, $bookFile);
 
         $this->em->flush();
 
         $this->emailHelper->sendPreselectedEmail($mediaDto->email, $nextRound, $mediaDto->firstName);
     }
 
-    public function createPerson(MediaDto $mediaDto, PersonType $personType, Round $round): Person
+    public function createPerson(MediaDto $mediaDto, Round $round): Person
     {
-        $person = $this->personRepository->findOneBy(['email' => $mediaDto->email, 'personType' => $personType]);
+        $person = $this->personRepository->findOneBy(['email' => $mediaDto->email]);
         if ($person === null) {
             $person = new Person();
-            $person->setEmail($mediaDto->email)
-                ->setPersonType($personType);
+            $person->setEmail($mediaDto->email);
         }
 
         $person->setFirstName($mediaDto->firstName)
@@ -167,25 +152,7 @@ readonly class MediaBusiness
         return $person;
     }
 
-    public function upsertInstagramLink(Person $person, string $instagram): void
-    {
-        if ($person->getLinks()->isEmpty() || $person->getLinks()->filter(fn($link) => $link->getLinkType()->getName() === 'Instagram')->isEmpty()) {
-            $instaLinkType = $this->linkTypeRepository->findOneBy(['name' => 'Instagram']);
-
-            $instaLink = new Link();
-            $instaLink->setLinkType($instaLinkType)
-                ->setUrl(ltrim($instagram, '@'))
-                ->addPerson($person);
-        } else {
-            $instaLink = $person->getLinks()->filter(fn($link) => $link->getLinkType()->getName() === 'Instagram')->first();
-            $instaLink->setUrl(ltrim($instagram, '@'));
-        }
-
-        $this->em->persist($instaLink);
-        $this->em->flush();
-    }
-
-    public function createMedia(Person $person, Round $round, UploadedFile $insuranceFile, ?UploadedFile $bookFile): Media
+    public function createMedia(Person $person, Round $round, ?string $pilotFollow, ?UploadedFile $insuranceFile, ?UploadedFile $bookFile): Media
     {
         // get round media or create new one
         $media = $person->getMedias()->filter(fn($media) => $media->getRound()?->getId() === $round->getId())->first();
@@ -195,14 +162,16 @@ readonly class MediaBusiness
                 ->setRound($round);
         }
 
-        if (!empty($mediaDto->pilotFollow)) {
-            $media->setPilotFollow($mediaDto->pilotFollow);
+        if (!empty($pilotFollow)) {
+            $media->setPilotFollow($pilotFollow);
         }
 
         $path = 'media/' . $round->getId() . '/' . $person->getUniqueId();
 
-        $insuranceFile = $this->fileHelper->saveFile($insuranceFile, $path,  'assurance.' . $insuranceFile->getClientOriginalExtension());
-        $media->setInsuranceFilePath($insuranceFile->getPathname());
+        if ($insuranceFile !== null) {
+            $insuranceFile = $this->fileHelper->saveFile($insuranceFile, $path,  'assurance.' . $insuranceFile->getClientOriginalExtension());
+            $media->setInsuranceFilePath($insuranceFile->getPathname());
+        }
 
         if ($bookFile !== null) {
             $bookFile = $this->fileHelper->saveFile($bookFile, $path, 'book' . $bookFile->getClientOriginalExtension());
@@ -250,7 +219,7 @@ readonly class MediaBusiness
 
         // update instagram link
         if (!empty($mediaDto->instagram)) {
-            $this->upsertInstagramLink($person, $mediaDto->instagram);
+            $this->linkHelper->upsertInstagramLink($person, $mediaDto->instagram);
         }
 
         // update media
