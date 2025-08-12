@@ -4,14 +4,18 @@ namespace App\Business;
 
 use App\Dto\CreateSponsorDto;
 use App\Dto\SponsorDto;
+use App\Dto\SponsorLinkDto;
 use App\Dto\SponsorshipCounterpartDto;
 use App\Dto\SponsorshipDto;
+use App\Entity\Link;
+use App\Entity\LinkType;
 use App\Entity\Person;
 use App\Entity\Sponsor;
 use App\Entity\Sponsorship;
 use App\Entity\SponsorshipCounterpart;
 use App\Helper\FileHelper;
 use App\Repository\EventRepository;
+use App\Repository\LinkTypeRepository;
 use App\Repository\PersonRepository;
 use App\Repository\RoundRepository;
 use App\Repository\SponsorRepository;
@@ -28,6 +32,7 @@ readonly class SponsorBusiness
         private PersonRepository       $personRepository,
         private EventRepository        $eventRepository,
         private RoundRepository        $roundRepository,
+        private LinkTypeRepository     $linkTypeRepository,
         private FileHelper             $fileHelper,
         private SerializerInterface    $serializer,
         private EntityManagerInterface $em
@@ -131,6 +136,10 @@ readonly class SponsorBusiness
         $sponsorshipsDto = $this->serializer->denormalize($sponsorDto->sponsorships, SponsorshipDto::class . '[]');
         $this->updateSponsorships($sponsor, $sponsorshipsDto, $contractFiles);
 
+        // update links
+        $sponsorLinksDto = $this->serializer->denormalize($sponsorDto->links, SponsorLinkDto::class . '[]');
+        $this->updateSponsorLinks($sponsor, $sponsorLinksDto);
+
         $this->em->flush();
 
         return $sponsor;
@@ -162,26 +171,36 @@ readonly class SponsorBusiness
         }
 
         // update contact
-        $contact = $sponsor->getContact();
+        if (!empty($sponsorDto->firstName) && !empty($sponsorDto->lastName) && !empty($sponsorDto->email)) {
+            $contact = $sponsor->getContact();
 
-        if ($contact === null) {
-            $contact = new Person();
-            $sponsor->setContact($contact);
+            if ($contact === null) {
+                $contact = new Person();
+                $sponsor->setContact($contact);
+            }
+
+            if (!empty($sponsorDto->phone)) {
+                $contact->setPhone($sponsorDto->phone);
+            }
+
+            $contact->setFirstName($sponsorDto->firstName);
+            $contact->setLastName($sponsorDto->lastName);
+            $contact->setEmail($sponsorDto->email);
+            $contact->setWarnings($sponsorDto->warnings)
+                ->setComment($sponsorDto->comment);
+
+            $this->em->persist($sponsor);
+            $this->em->persist($contact);
         }
-        $contact->setFirstName($sponsorDto->firstName)
-            ->setLastName($sponsorDto->lastName)
-            ->setEmail($sponsorDto->email)
-            ->setPhone($sponsorDto->phone)
-            ->setWarnings($sponsorDto->warnings)
-            ->setComment($sponsorDto->comment);
-
-        $this->em->persist($sponsor);
-        $this->em->persist($contact);
         $this->em->flush();
 
         // update sponsorships
         $sponsorshipsDto = $this->serializer->denormalize($sponsorDto->sponsorships, SponsorshipDto::class . '[]');
         $this->updateSponsorships($sponsor, $sponsorshipsDto, $contractFiles);
+
+        // update links
+        $sponsorLinksDto = $this->serializer->denormalize($sponsorDto->links, SponsorLinkDto::class . '[]');
+        $this->updateSponsorLinks($sponsor, $sponsorLinksDto);
 
         $this->em->flush();
     }
@@ -308,5 +327,63 @@ readonly class SponsorBusiness
         foreach ($counterpartsToDelete as $counterpart) {
             $this->em->remove($counterpart);
         }
+    }
+
+    /**
+     * Updates the sponsor links.
+     *
+     * @param Sponsor $sponsor The sponsor entity to update.
+     * @param SponsorLinkDto[] $linksDto The data transfer object containing the updated links information.
+     */
+    private function updateSponsorLinks(Sponsor $sponsor, array $linksDto): void
+    {
+        $links = $sponsor->getLinks();
+
+        // delete links that are not in the DTO
+        $this->deleteSponsorLinks($links, $linksDto);
+
+        foreach ($linksDto as $linkDto) {
+            if ($linkDto->id) {
+                $link = $links->filter(fn($l) => $l->getId() === $linkDto->id)->first();
+                if ($link === false) {
+                    continue;
+                }
+            } else {
+                $link = new Link();
+                $sponsor->addLink($link);
+            }
+
+            $linkType = $this->linkTypeRepository->find($linkDto->linkTypeId);
+            if ($linkType === null) {
+                continue;
+            }
+
+            $baseUrl = $this->getLinkTypeBaseUrl($linkType);
+
+            $link->setUrl($baseUrl . $linkDto->link)
+                ->setLinkType($linkType);
+
+            $this->em->persist($link);
+        }
+    }
+
+    private function deleteSponsorLinks(Collection $links, array $linksDto): void
+    {
+        $linkDtoIds = array_map(fn(SponsorLinkDto $dto) => $dto->id, $linksDto);
+        $linksToDelete = $links->filter(fn($l) => !in_array($l->getId(), $linkDtoIds));
+
+        foreach ($linksToDelete as $link) {
+            $this->em->remove($link);
+        }
+    }
+
+    private function getLinkTypeBaseUrl(LinkType $linkType): string
+    {
+        return match ($linkType->getId()) {
+            1 => 'https://www.instagram.com/',
+            2 => 'https://www.facebook.com/',
+            3 => 'https://www.youtube.com/',
+            default => '',
+        };
     }
 }

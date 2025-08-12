@@ -563,12 +563,12 @@ class PersonRepository extends ServiceEntityRepository
             ->innerJoin('p.rescuers', 'r');
 
         if ($eventId !== null) {
-            $qb->innerJoin('v.round', 'r')
-                ->andWhere('r.event = :eventId')
+            $qb->innerJoin('r.round', 'ro')
+                ->andWhere('ro.event = :eventId')
                 ->setParameter('eventId', $eventId);
         }
         if ($roundId !== null) {
-            $qb->andWhere('v.round = :roundId')
+            $qb->andWhere('r.round = :roundId')
                 ->setParameter('roundId', $roundId);
         }
         if ($name !== null) {

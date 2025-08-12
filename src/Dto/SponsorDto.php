@@ -20,7 +20,10 @@ class SponsorDto
         public ?string $comment = null,
 
         // Sponsorships
-        public array $sponsorships = []
+        public array $sponsorships = [],
+
+        // Links
+        public array $links = []
     )
     {}
 }

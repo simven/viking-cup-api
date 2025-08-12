@@ -111,7 +111,8 @@ class BilletwebBusiness
                     $pilot = $person->getPilot();
                     if ($pilot === null) {
                         $pilot = new Pilot();
-                        $pilot->setFfsaLicensee(boolval($billetwebTicket->getCustom()['Etes-vous licencié FFSA ?'] ?? null));
+                        $pilot->setPerson($person)
+                            ->setFfsaLicensee(boolval($billetwebTicket->getCustom()['Etes-vous licencié FFSA ?'] ?? null));
 
                         if ($pilot->getCreatedAt() === null && $billetwebTicket->getCreationDate() !== null) {
                             $pilot->setCreatedAt($billetwebTicket->getCreationDate());
