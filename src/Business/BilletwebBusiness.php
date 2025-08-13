@@ -76,7 +76,7 @@ class BilletwebBusiness
                 try {
                     $billetwebTicket = $this->createBilletwebTicketFromDto($eventTicket);
 
-                    if ($billetwebTicket->getPass() === -1) {
+                    if ($billetwebTicket === null || $billetwebTicket->getPass() === -1) {
                         continue;
                     }
 
@@ -183,7 +183,7 @@ class BilletwebBusiness
                     $billetwebTicket = $this->createBilletwebTicketFromDto($eventTicket);
 
                     // Skip if the ticket is a pack
-                    if ($billetwebTicket->getPass() === -1 || $billetwebTicket->getTicketLabel() === 'Pass Viking!Cup enfant') {
+                    if ($billetwebTicket === null || $billetwebTicket->getPass() === -1 || $billetwebTicket->getTicketLabel() === 'Pass Viking!Cup enfant') {
                         continue;
                     }
 
@@ -269,7 +269,7 @@ class BilletwebBusiness
         $billetweb = $this->billetwebRepository->find($billetwebDto->id);
 
         if ($billetweb !== null) {
-            return $billetweb;
+            return null;
         }
 
         $billetweb = new BilletwebTicket();

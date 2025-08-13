@@ -50,15 +50,15 @@ readonly class PersonBusiness
 
     public function createPerson(PersonDto $personDto): Person
     {
-        $person = $this->personRepository->findOneBy(['email' => $personDto->email]);
+        $person = $this->personRepository->findOneBy(['email' => $personDto->email, 'firstName' => $personDto->firstName, 'lastName' => $personDto->lastName]);
         if ($person === null) {
             $person = new Person();
-            $person->setEmail($personDto->email);
+            $person->setEmail($personDto->email)
+                ->setFirstName($personDto->firstName)
+                ->setLastName($personDto->lastName);
         }
 
-        $person->setFirstName($personDto->firstName)
-            ->setLastName($personDto->lastName)
-            ->setPhone($personDto->phone)
+        $person->setPhone($personDto->phone)
             ->setAddress($personDto->address)
             ->setCity($personDto->city)
             ->setZipCode($personDto->zipCode)

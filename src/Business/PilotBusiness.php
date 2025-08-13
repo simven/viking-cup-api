@@ -255,7 +255,7 @@ readonly class PilotBusiness
                 }
             }
             if ($pilotEvent !== false) {
-                $pilotEvent->setPilotNumber($pilotDto->eventId)
+                $pilotEvent->setPilotNumber($pilotDto->number)
                     ->setReceiveWindscreenBand($pilotDto->receiveWindscreenBand);
 
                 $this->em->persist($pilotEvent);

@@ -29,7 +29,7 @@ class VolunteerApiController extends AbstractController
         #[MapQueryParameter] ?string $name = null,
         #[MapQueryParameter] ?string $email = null,
         #[MapQueryParameter] ?string $phone = null,
-        #[MapQueryParameter] ?string $role = null
+        #[MapQueryParameter] ?int    $roleId = null
     ): JsonResponse
     {
         $volunteers = $volunteerBusiness->getVolunteers(
@@ -41,7 +41,7 @@ class VolunteerApiController extends AbstractController
             $name,
             $email,
             $phone,
-            $role
+            $roleId
         );
 
         return $this->json($volunteers, Response::HTTP_OK, [], ['groups' => ['volunteer', 'role', 'volunteerRole', 'volunteerRound', 'round', 'roundDetails', 'roundDetail', 'roundEvent', 'event']]);
