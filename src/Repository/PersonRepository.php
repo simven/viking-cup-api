@@ -192,7 +192,8 @@ class PersonRepository extends ServiceEntityRepository
         ?string $number = null,
         ?bool   $ffsaLicensee = null,
         ?string $ffsaNumber = null,
-        ?string $nationality = null
+        ?string $nationality = null,
+        ?bool   $receivedWindscreenBand = null
     ): array
     {
         $order = $order ?? 'ASC';
@@ -243,6 +244,10 @@ class PersonRepository extends ServiceEntityRepository
             $qb->andWhere('LOWER(p.nationality) LIKE :nationality')
                 ->setParameter('nationality', '%' . $this->normalizeName($nationality) . '%');
         }
+        if ($eventId !== null && $receivedWindscreenBand !== null) {
+            $qb->andWhere('pe.receiveWindscreenBand = :receivedWindscreenBand')
+                ->setParameter('receivedWindscreenBand', $receivedWindscreenBand);
+        }
 
 
         switch ($sort) {
@@ -270,7 +275,9 @@ class PersonRepository extends ServiceEntityRepository
             case 'nationality':
                 $qb->orderBy('p.nationality', $order);
                 break;
-
+            case 'receivedWindscreenBand':
+                $qb->orderBy('pe.receiveWindscreenBand', $order);
+                break;
         }
 
         // Compte total des résultats

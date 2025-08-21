@@ -50,10 +50,11 @@ readonly class PilotBusiness
         ?string $number = null,
         ?bool   $ffsaLicensee = null,
         ?string $ffsaNumber = null,
-        ?string $nationality = null
+        ?string $nationality = null,
+        ?bool   $receivedWindscreenBand = null
     ): array
     {
-        $personIdsTotal = $this->personRepository->findFilteredPilotPersonIdsPaginated($page, $limit, $sort, $order, $name, $email, $phone, $eventId, $roundId, $categoryId, $number, $ffsaLicensee, $ffsaNumber, $nationality);
+        $personIdsTotal = $this->personRepository->findFilteredPilotPersonIdsPaginated($page, $limit, $sort, $order, $name, $email, $phone, $eventId, $roundId, $categoryId, $number, $ffsaLicensee, $ffsaNumber, $nationality, $receivedWindscreenBand);
         $persons = $this->personRepository->findPersonsByIds($personIdsTotal['items']);
 
         return [
